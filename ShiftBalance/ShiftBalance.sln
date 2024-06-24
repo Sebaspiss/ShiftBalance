@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.34928.147
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShiftBalance.MVC", "ShiftBalance.MVC\ShiftBalance.MVC.csproj", "{3DCF4856-47E9-4C32-9D3F-7567EA705D3B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3DCF4856-47E9-4C32-9D3F-7567EA705D3B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3DCF4856-47E9-4C32-9D3F-7567EA705D3B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3DCF4856-47E9-4C32-9D3F-7567EA705D3B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3DCF4856-47E9-4C32-9D3F-7567EA705D3B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {03176CD2-9CAF-48AF-8A5E-9AC8FD3D4A5C}
+	EndGlobalSection
+EndGlobal

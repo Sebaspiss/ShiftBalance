@@ -7,7 +7,7 @@ namespace ShiftBalance.MVC.Controllers
     {
         public IActionResult Index()
         {
-            int numDipendenti = 4;
+            int numDipendenti = 10;
             int numGiorniMarzo = 31;
             int numGiorniAprile = 30;
             int numGiorniMaggio = 31;
@@ -77,10 +77,10 @@ namespace ShiftBalance.MVC.Controllers
             for (int j = 0; j < numGiorniTotali; j++)
             {
                 // Ogni giorno devono esserci esattamente due dipendenti in turno
-                Constraint c1 = solver.MakeConstraint(2, 2, $"c1_{j}");
+                Constraint singleDay = solver.MakeConstraint(2, 2, $"c1_{j}");
                 for (int i = 0; i < numDipendenti; i++)
                 {
-                    c1.SetCoefficient(W[i, j], 1);
+                    singleDay.SetCoefficient(W[i, j], 1);
                 }
             }
 

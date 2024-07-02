@@ -135,6 +135,7 @@ namespace ShiftBalance.MVC.Controllers
                 shiftsWorked.Clear();
             }
 
+            // Vincoli: un dipendente non può lavorare dopo una reperibilità festiva
             for (int n = 0; n < dipendenti; n++)
             {
                 for (int d = 0; d < giorni - 1; d++)
@@ -144,7 +145,6 @@ namespace ShiftBalance.MVC.Controllers
                         foreach (int s in allTurni)
                         {
                             model.Add(shifts[(n + 1, d + 1, s)] + shifts[(n + 1, d + 2, s)] <= 1);
-                            model.Add(shifts[(n + 1, d + 1, s)] + shifts[(n + 1, d + 2, s)] <= 1);
                         }
                     }
                 }
@@ -152,21 +152,19 @@ namespace ShiftBalance.MVC.Controllers
 
             // Funzione obiettivo: minimizzare l'assegnazione di turni in base alla media dei turni precedenti
             LinearExpr objective = LinearExpr.Sum(Enumerable.Range(1, dipendenti).SelectMany(n =>
-                Enumerable.Range(1, giorni).SelectMany(d =>
-                    Enumerable.Range(1, turni).Select(s =>
-                        shifts[(n, d, s)] * mediaTurniPrecedenti[n - 1]))));
+                                                Enumerable.Range(1, giorni).SelectMany(d => 
+                                                Enumerable.Range(1, turni).Select(s => 
+                                                shifts[(n, d, s)] * mediaTurniPrecedenti[n - 1]))));
 
             model.Minimize(objective);
 
             //Soluzione
             CpSolver solver = new CpSolver();
-            // Tell the solver to enumerate all solutions.
-            solver.StringParameters += "linearization_level:0 " + "enumerate_all_solutions:true ";
+           solver.StringParameters += "linearization_level:2";
 
-            const int solutionLimit = 1;
-            SolutionPrinter cb = new SolutionPrinter(allDipendenti, allGiorni, allTurni, shifts, solutionLimit);
-
+            SolutionPrinter cb = new SolutionPrinter(allDipendenti, allGiorni, allTurni, shifts);
             CpSolverStatus status = solver.Solve(model, cb);
+
             Console.WriteLine($"Solve status: {status}");
 
             return View();

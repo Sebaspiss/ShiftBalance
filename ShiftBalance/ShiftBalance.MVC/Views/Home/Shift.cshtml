@@ -1,0 +1,25 @@
+﻿@{
+    ViewData["Title"] = "Shift";
+}
+<div class="text-center">
+    <h1 class="display-2">Enter the shift</h1>
+</div>
+
+<div class="p-2">
+    <label>Durata </label>
+    <input type="number" id="days">
+    <label>N° Dipendenti </label>
+    <input type="number" id="workers">
+</div>
+
+<div class="form-group">
+    <label class="active" for="dateStart">Inizio</label>
+    <input type="date" id="dateStart" name="dateStart">
+    <label class="active" for="dateEnd">Fine</label>
+    <input type="date" id="dateEnd" name="dateEnd">
+    <br /><br />
+</div>
+
+<div>
+    <button type="button" class="btn btn-primary" onclick="alert('OK')">Run</button>
+</div>

@@ -1,12 +1,10 @@
 ﻿using Google.OrTools.Sat;
-using Microsoft.AspNetCore.Mvc;
-using ShiftBalance.MVC.Services;
 
-namespace ShiftBalance.MVC.Controllers
+namespace ShiftBalance.MVC.Services
 {
-    public class CpSatSolverController : Controller
+    public class CpSatSolver
     {
-        public IActionResult Index()
+        public void Solve()
         {
             //DATA
             int dipendenti = 13;
@@ -131,7 +129,7 @@ namespace ShiftBalance.MVC.Controllers
                         shiftsWorked.Add(shifts[(n, d, s)]);
                     }
                 }
-                model.AddLinearConstraint(LinearExpr.Sum(shiftsWorked), minTurniPerDipendente, maxTurniPerDipendente);
+                model.AddLinearConstraint(Google.OrTools.Sat.LinearExpr.Sum(shiftsWorked), minTurniPerDipendente, maxTurniPerDipendente);
                 shiftsWorked.Clear();
             }
 
@@ -151,23 +149,21 @@ namespace ShiftBalance.MVC.Controllers
             }
 
             // Funzione obiettivo: minimizzare l'assegnazione di turni in base alla media dei turni precedenti
-            LinearExpr objective = LinearExpr.Sum(Enumerable.Range(1, dipendenti).SelectMany(n =>
-                                                Enumerable.Range(1, giorni).SelectMany(d => 
-                                                Enumerable.Range(1, turni).Select(s => 
+            Google.OrTools.Sat.LinearExpr objective = Google.OrTools.Sat.LinearExpr.Sum(Enumerable.Range(1, dipendenti).SelectMany(n =>
+                                                Enumerable.Range(1, giorni).SelectMany(d =>
+                                                Enumerable.Range(1, turni).Select(s =>
                                                 shifts[(n, d, s)] * mediaTurniPrecedenti[n - 1]))));
 
             model.Minimize(objective);
 
             //Soluzione
             CpSolver solver = new CpSolver();
-           solver.StringParameters += "linearization_level:2";
+            solver.StringParameters += "linearization_level:2";
 
             SolutionPrinter cb = new SolutionPrinter(allDipendenti, allGiorni, allTurni, shifts);
             CpSolverStatus status = solver.Solve(model, cb);
 
             Console.WriteLine($"Solve status: {status}");
-
-            return View();
         }
     }
 }

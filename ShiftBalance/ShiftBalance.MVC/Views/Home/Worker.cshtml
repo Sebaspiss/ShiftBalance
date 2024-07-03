@@ -1,0 +1,47 @@
+﻿@{
+    ViewData["Title"] = "Worker";
+}
+<script>
+    function ShowModal() {
+        $(document).ready(function () {
+            $('.nav-link').click(function (e) {
+                e.preventDefault(); // Prevent default anchor tag behavior
+                $('#infoModal').modal('show'); // Show the modal
+            });
+        });
+    }
+</script>
+
+<table class="table table-striped">
+    <thead class="bg-primary">
+        <tr>
+            <th class="text-white" scope="col">#</th>
+            <th class="text-white" scope="col">Name</th>
+            <th class="text-white" scope="col">Surname</th>
+            <th class="text-white" scope="col">Profile</th>
+            <th class="text-white" scope="col">Vacations</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <th scope="row">1</th>
+            <td>Mark</td>
+            <td>Otto</td>
+            <td>Junior</td>
+            <td><a class="nav-link" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#infoModal">View</a></td>
+        </tr>
+        <tr>
+            <th scope="row">2</th>
+            <td>Jacob</td>
+            <td>Thornton</td>
+            <td>Junior</td>
+            <td><a class="nav-link" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#infoModal">View</a></td>
+        </tr>
+        <tr>
+            <th scope="row">3</th>
+            <td colspan="2">Larry the Bird</td>
+            <td>Senior</td>
+            <td><a class="nav-link" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#infoModal">View</a></td>
+        </tr>
+    </tbody>
+</table>

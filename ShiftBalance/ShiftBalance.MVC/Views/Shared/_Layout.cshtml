@@ -18,21 +18,40 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between bg-primary bg-gradient">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                            <a class="nav-link text-white" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                            <a class="nav-link text-white" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="CpSatSolver" asp-action="Index">Shift</a>
+                            <a class="nav-link text-white" asp-area="" asp-controller="Home" asp-action="Shift">Shift</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" asp-area="" asp-controller="Home" asp-action="Worker">Worker</a>
                         </li>
                     </ul>
                 </div>
             </div>
         </nav>
+
+        <!-- MODAL FORM-->
+        <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="infoModalLabel">Mark Otto</h5>
+                    </div>
+                    <div class="modal-body">
+                        <p>Ferie di tizio vanno da:</p>
+                        <p>19/08/2024 a 31/08/2024</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </header>
     <div class="container">
         <main role="main" class="pb-3">

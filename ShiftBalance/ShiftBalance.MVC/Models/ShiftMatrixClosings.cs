@@ -1,9 +1,6 @@
 ﻿namespace ShiftBalance.MVC.Models
 {
-    public class ShiftMatrixClosings : ShiftMatrix
+    public class ShiftMatrixClosings(int employeesNumber, int daysNumber) : ShiftMatrix(employeesNumber, daysNumber)
     {
-        public ShiftMatrixClosings(int employeesNumber, int daysNumber) : base(employeesNumber, daysNumber)
-        {
-        }
     }
 }

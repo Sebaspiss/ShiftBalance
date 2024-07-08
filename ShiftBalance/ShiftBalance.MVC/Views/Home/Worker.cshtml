@@ -1,4 +1,5 @@
-﻿@{
+﻿@model WorkerViewModel
+@{
     ViewData["Title"] = "Worker";
 }
 <script>
@@ -14,34 +15,50 @@
 
 <table class="table table-striped">
     <thead class="bg-primary">
-        <tr>
-            <th class="text-white" scope="col">#</th>
-            <th class="text-white" scope="col">Name</th>
-            <th class="text-white" scope="col">Surname</th>
-            <th class="text-white" scope="col">Profile</th>
-            <th class="text-white" scope="col">Vacations</th>
+        <tr class="text-white">
+            <th  scope="col">#</th>
+            <th scope="col">Name</th>
+            <th scope="col">Surname</th>
+            <th scope="col">Profile</th>
+            <th scope="col">Date Of Birth</th>
+            <th scope="col">Date Of Hiring</th>
+            <th scope="col">Vacations</th>
+            <th scope="col">Shifts Avg.</th>
         </tr>
     </thead>
     <tbody>
-        <tr>
-            <th scope="row">1</th>
-            <td>Mark</td>
-            <td>Otto</td>
-            <td>Junior</td>
-            <td><a class="nav-link" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#infoModal">View</a></td>
-        </tr>
-        <tr>
-            <th scope="row">2</th>
-            <td>Jacob</td>
-            <td>Thornton</td>
-            <td>Junior</td>
-            <td><a class="nav-link" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#infoModal">View</a></td>
-        </tr>
-        <tr>
-            <th scope="row">3</th>
-            <td colspan="2">Larry the Bird</td>
-            <td>Senior</td>
-            <td><a class="nav-link" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#infoModal">View</a></td>
-        </tr>
+        @for (int i = 1; i <= Model.Employees.Count; i++)
+        {
+            <tr>
+                <th scope="row">@Model.Employees[i].Id</th>
+                <td>@Model.Employees[i].Name</td>
+                <td>@Model.Employees[i].Surname</td>
+                <td>@Model.Employees[i].Profile.ToString()</td>
+                <td>@Model.Employees[i].DateOfBirth</td>
+                <td>@Model.Employees[i].DateOfHiring</td>
+                <td><a class="nav-link" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#infoModal">View</a></td>
+                <td>@Model.Employees[i].ShiftAverage</td>
+            </tr>
+        }
     </tbody>
 </table>
+
+<!-- MODAL FORM-->
+<div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="infoModalLabel">NOME DEL LAVORATORE CLICCATO</h5>
+            </div>
+            <div class="modal-body">
+                <p>Ferie di NOME</p>
+                @foreach (EmployeeVacations vacation in Model.EmployeesVacations.Where(x=>x.IdEmployee == 0))
+                {
+                    <p>DA {@vacation.StartDate.ToString("d")} A {@vacation.EndDate.ToString("d")}</p>
+                }            
+                <button class="btn btn-primary mb-2" onclick="alert('Add')">Add Vacations</button>
+                <button class="btn btn-danger mb-2" onclick="alert('Remove')">Remove vacations</button>
+            </div>
+        </div>
+    </div>
+</div>

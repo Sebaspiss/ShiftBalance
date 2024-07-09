@@ -9,5 +9,7 @@
         public DateTime DateOfHiring { get; set; }
         public DateTime DateOfBirth { get; set; }
         public int ShiftAverage { get; set; }
+
+        public List<EmployeeVacations> Vacations { get; } = new();
     }
 }

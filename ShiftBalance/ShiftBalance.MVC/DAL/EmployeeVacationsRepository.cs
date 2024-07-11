@@ -33,7 +33,7 @@ namespace ShiftBalance.MVC.DAL
 
         public void Delete(int id)
         {
-            EmployeeVacations? vacations = _context.EmployeesVacations.Find(id);
+            EmployeeVacations vacations = _context.EmployeesVacations.Find(id);
             
             if (vacations != null)
             {

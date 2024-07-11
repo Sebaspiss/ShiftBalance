@@ -5,11 +5,17 @@ namespace ShiftBalance.MVC.DAL
 {
     public class DataContext : DbContext
     {
-        protected readonly IConfiguration Configuration;
+        public DataContext(DbContextOptions options) : base(options)
+        { }
 
-        public DataContext(IConfiguration configuration)
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            Configuration = configuration;
+            modelBuilder.Entity<Employee>()
+                .HasMany(e => e.Vacations)
+                .WithOne(e => e.Employee)
+                .HasForeignKey(e => e.IdEmployee)
+                .HasPrincipalKey(e => e.Id)
+                .IsRequired();
         }
 
         public DbSet<Employee> Employees { get; set; }

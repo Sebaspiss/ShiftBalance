@@ -1,14 +1,22 @@
 using Microsoft.EntityFrameworkCore;
 using ShiftBalance.MVC.DAL;
+using ShiftBalance.MVC.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddControllersWithViews();
-
 // DbConnection
-builder.Services.AddDbContext<DataContext>(options =>
-      options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddEntityFrameworkNpgsql()
+    .AddDbContext<DataContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Repositories
+builder.Services.AddScoped<EmployeeRepository>();
+builder.Services.AddScoped<EmployeeVacationsRepository>();
+
+// Services
+builder.Services.AddScoped<EmployeeService>();
+
+// MVC
+builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
@@ -22,7 +30,6 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-
 app.UseRouting();
 app.UseAuthorization();
 

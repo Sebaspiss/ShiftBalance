@@ -1,7 +1,12 @@
-﻿namespace ShiftBalance.MVC.Models
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace ShiftBalance.MVC.Models
 {
+    [Table("Employee")]
     public class Employee
     {
+        [Key]
         public int Id { get; set; }
         public string Name { get; set; }
         public string Surname { get; set; }
@@ -10,6 +15,6 @@
         public DateTime DateOfBirth { get; set; }
         public int ShiftAverage { get; set; }
 
-        public List<EmployeeVacations> Vacations { get; } = new();
+        public ICollection<EmployeeVacations> Vacations { get; set; }
     }
 }

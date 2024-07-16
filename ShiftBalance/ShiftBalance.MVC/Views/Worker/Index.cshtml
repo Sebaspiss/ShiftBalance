@@ -1,0 +1,58 @@
+﻿@model WorkerViewModel
+@{
+    ViewData["Title"] = "Worker";
+}
+<table class="table table-striped">
+    <thead class="bg-primary">
+        <tr class="text-white">
+            <th scope="col">#</th>
+            <th scope="col">Name</th>
+            <th scope="col">Surname</th>
+            <th scope="col">Profile</th>
+            <th scope="col">Date Of Birth</th>
+            <th scope="col">Date Of Hiring</th>
+            <th scope="col">Vacations</th>
+            <th scope="col">Shifts Avg.</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (Employee emp in Model.Employees)
+        {
+            <tr>
+                <th scope="row">@emp.Id</th>
+                <td>@emp.Name</td>
+                <td>@emp.Surname</td>
+                <td>@emp.Profile.ToString()</td>
+                <td>@emp.DateOfBirth.ToString("d")</td>
+                <td>@emp.DateOfHiring.ToString("d")</td>
+                <td>
+                    <a class="nav-link"
+                       style="cursor: pointer;"
+                       data-employee-surname="@emp.Surname"
+                       data-employee-vacations="@System.Text.Json.JsonSerializer.Serialize(Model.EmployeesVacations.Where(x=> x.IdEmployee == emp.Id).ToList())"
+                       data-bs-toggle="modal"
+                       data-bs-target="#infoModal">
+                        View
+                    </a>
+                </td>
+                <td>@emp.ShiftAverage</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- MODAL FORM-->
+<div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="infoModalLabel"></h5>
+            </div>
+            <div class="modal-body" id="modal-body-content">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include external JavaScript file -->
+<script src="~/js/workerVacations.js"></script>

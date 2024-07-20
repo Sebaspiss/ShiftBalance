@@ -4,23 +4,21 @@ using ShiftBalance.MVC.Services;
 
 namespace ShiftBalance.MVC.Controllers
 {
-    public class WorkerController : Controller
+    public class ShiftController : Controller
     {
         private readonly EmployeeService _employeeService;
 
-        public WorkerController(EmployeeService employeeService)
+        public ShiftController(EmployeeService employeeService)
         {
             _employeeService = employeeService;
         }
 
         public IActionResult Index()
         {
-            WorkerViewModel model = new()
+            ShiftViewModel model = new()
             {
-                Employees = _employeeService.GetEmployees(),
-                EmployeesVacations = _employeeService.GetVacations()
+                Employees = _employeeService.GetEmployees()
             };
-
             return View(model);
         }
     }

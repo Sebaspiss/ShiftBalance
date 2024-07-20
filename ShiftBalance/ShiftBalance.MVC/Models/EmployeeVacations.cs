@@ -14,6 +14,6 @@ namespace ShiftBalance.MVC.Models
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
 
-        public Employee Employee { get; set; }
+        public Employee Employee;
     }
 }

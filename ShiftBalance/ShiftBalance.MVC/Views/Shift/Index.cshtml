@@ -1,4 +1,5 @@
-﻿@{
+﻿@model ShiftViewModel
+@{
     ViewData["Title"] = "Shift";
 }
 <head>
@@ -13,35 +14,35 @@
     <!-- NAVIGAZIONE -->
     <ul class="nav nav-tabs" id="myTab" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="tab1-tab" data-bs-toggle="tab" data-bs-target="#tab1" type="button" role="tab" aria-controls="tab1" aria-selected="true">Workers</button>
+            <button class="nav-link active" id="tabWorkers-tab" data-bs-toggle="tab" data-bs-target="#tabWorkers" type="button" role="tab" aria-controls="tabWorkers" aria-selected="true">Workers</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tab2-tab" data-bs-toggle="tab" data-bs-target="#tab2" type="button" role="tab" aria-controls="tab2" aria-selected="false">Duration</button>
+            <button class="nav-link" id="tabDuration-tab" data-bs-toggle="tab" data-bs-target="#tabDuration" type="button" role="tab" aria-controls="tabDuration" aria-selected="false">Duration</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tab3-tab" data-bs-toggle="tab" data-bs-target="#tab3" type="button" role="tab" aria-controls="tab3" aria-selected="false">Matrix Solver</button>
+            <button class="nav-link" id="tabMatrix-tab" data-bs-toggle="tab" data-bs-target="#tabMatrix" type="button" role="tab" aria-controls="tabMatrix" aria-selected="false">Matrix Solver</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tab4-tab" data-bs-toggle="tab" data-bs-target="#tab4" type="button" role="tab" aria-controls="tab4" aria-selected="false">CP-SAT Solver</button>
+            <button class="nav-link" id="tabCp-tab" data-bs-toggle="tab" data-bs-target="#tabCp" type="button" role="tab" aria-controls="tabCp" aria-selected="false">CP-SAT Solver</button>
         </li>
     </ul>
 
     <div class="tab-content" id="myTabContent">
         <!-- WORKERS -->
-        <div class="tab-pane fade show active" id="tab1" role="tabpanel" aria-labelledby="tab1-tab">
+        <div class="tab-pane fade show active" id="tabWorkers" role="tabpanel" aria-labelledby="tabWorkers-tab">
             <div id="select-container1" class="mt-3 p-3 border rounded">
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="pippoCheck">
-                    <label class="form-check-label ms-2" for="pippoCheck">Pippo</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input " type="checkbox" id="plutoCheck">
-                    <label class="form-check-label ms-2" for="plutoCheck">Pluto</label>
+                    @foreach (Employee emp in Model.Employees)
+                    {
+                        <input class="form-check-input" type="checkbox" id="@emp.Id">
+                        <label class="form-check-label ms-2" for="@emp.Id">@string.Format("{0} {1}",emp.Name,emp.Surname)</label>
+                        <br />
+                    }
                 </div>
             </div>
         </div>
         <!-- DURATION -->
-        <div class="tab-pane fade" id="tab2" role="tabpanel" aria-labelledby="tab2-tab">
+        <div class="tab-pane fade" id="tabDuration" role="tabpanel" aria-labelledby="tabDuration-tab">
             <div id="select-container2" class="mt-3">
                 <div class="form-floating mb-3" data-provide="datepicker">
                     <input type="date" class="form-control" id="fromDate">
@@ -55,14 +56,14 @@
             <button class="btn btn-danger mb-2" onclick="eraseDatepicker()">Reset</button>
         </div>
         <!-- MATRIX SOLVER -->
-        <div class="tab-pane fade" id="tab3" role="tabpanel" aria-labelledby="tab3-tab">
+        <div class="tab-pane fade" id="tabMatrix" role="tabpanel" aria-labelledby="tabMatrix-tab">
             <div id="select-container3" class="mt-3">
                 <button class="btn btn-outline-primary mb-2" onclick="">Generate shift</button>
                 
             </div>
         </div>
         <!-- LINEAR SOLVER -->
-        <div class="tab-pane fade" id="tab4" role="tabpanel" aria-labelledby="tab4-tab">
+        <div class="tab-pane fade" id="tabCp" role="tabpanel" aria-labelledby="tabCp-tab">
             <div id="select-container4" class="mt-3">
                 <button class="btn btn-outline-primary mb-2" onclick="">Generate shift</button>
             </div>
@@ -70,9 +71,5 @@
     </div>
 </div>
 
-<script>
-    function eraseDatepicker() {
-        $('#fromDate').val('');
-        $('#toDate').val('');
-    }
-</script>
+<!-- Include external JavaScript file -->
+<script src="~/js/shift.js"></script>

@@ -1,71 +1,129 @@
 ﻿using Google.OrTools.Sat;
+using ShiftBalance.MVC.Models;
+using System;
 
 namespace ShiftBalance.MVC.Services
 {
     public class CpSatSolver
     {
+        // Input data
+        private readonly List<Employee> _workers;
+        private readonly DateTime _startShift;
+        private readonly DateTime _endShift;
+
+        // Constants
+        private const int ShiftsPerDay = 2;
+
+        public CpSatSolver(List<Employee> workers, DateTime startShift, DateTime endShift)
+        {
+            _workers = workers;
+            _startShift = startShift;
+            _endShift = endShift;
+        }
+
+        private static int[] GetShiftsPerDay()
+        {
+            return Enumerable.Range(1, 2).ToArray();
+        }
+
+        private int[] GetDaysInSchedule()
+        {
+            var numberOfDays = _endShift.Subtract(_startShift).TotalDays;
+
+            return Enumerable.Range(1, (int)numberOfDays).ToArray();
+        }
+
+        private int[] GetWorkersInSchedule()
+        {
+            return Enumerable.Range(1, _workers.Count).ToArray();
+        }
+
+        // Media dei turni precedentemente lavorati per ogni dipendente
+        private int[] GetShiftsAverage()
+        {
+            int[] averages = new int[_workers.Count - 1];
+            
+            for(int i = 0; i < averages.Length; i++) 
+            {
+                averages[i] = _workers[i].ShiftAverage;
+            }
+            return averages;
+        }
+
+        // Disponibilità
+        private int[,] GetVacations(int numberOfWorkers,int numberOfDays)
+        {
+          int[,] vacations = new int[numberOfWorkers, numberOfDays];
+
+            // Dipendente 1 in ferie dal 10 al 15
+            for (int d = 9; d <= 14; d++)
+            {
+                vacations[1, d] = 1;
+            }
+            return vacations;
+        }
+
+        // Definizione dei giorni festivi (1 indica festivo, 0 indica giorno lavorativo)
+        private int[] GetHolidays(int numberOfDays)
+        {
+           int[] holidays = new int[numberOfDays];
+
+            for (int d = 0; d < numberOfDays; d++)
+            {
+                var date = new DateTime(_startShift.Year, _startShift.Month, _startShift.Day).AddDays(d);
+
+                if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
+                {
+                    holidays[d] = 1;
+                }
+            }
+            // Aggiunta di festività speciali
+            holidays[1] = 1; // 1 Aprile 2024 - Pasquetta
+            holidays[25] = 1; // 25 Aprile 2024 - Festa della Liberazione
+            holidays[30] = 1; // 1 Maggio 2024 - Festa dei Lavoratori
+
+            return holidays;
+        }
+
         public void Solve()
         {
             //DATA
-            int dipendenti = 13;
-            int giorni = 92;
-            int turni = 2;
+            int numberOfWorkers = _workers.Count;
+            int numberOfDays = (int)_endShift.Subtract(_startShift).TotalDays;
 
-            int[] allDipendenti = Enumerable.Range(1, dipendenti).ToArray();
-            int[] allGiorni = Enumerable.Range(1, giorni).ToArray();
-            int[] allTurni = Enumerable.Range(1, turni).ToArray();
+            int[] allWorkers = GetWorkersInSchedule();
+            int[] allDays = GetDaysInSchedule();
+            int[] allShifts = GetShiftsPerDay();
 
             //MODELLO
             CpModel model = new();
-            model.Model.Variables.Capacity = dipendenti * giorni * turni;
+            model.Model.Variables.Capacity = numberOfWorkers * numberOfDays * ShiftsPerDay;
 
             // variabili
-            Dictionary<(int, int, int), BoolVar> shifts = new(dipendenti * giorni * turni);
-            foreach (int n in allDipendenti)
+            Dictionary<(int, int, int), BoolVar> shifts = new(numberOfWorkers * numberOfDays * ShiftsPerDay);
+            foreach (int n in allWorkers)
             {
-                foreach (int d in allGiorni)
+                foreach (int d in allDays)
                 {
-                    foreach (int s in allTurni)
+                    foreach (int s in allShifts)
                     {
                         shifts.Add((n, d, s), model.NewBoolVar($"shifts_n{n}d{d}s{s}"));
                     }
                 }
             }
 
-            // Media dei turni precedentemente lavorati per ogni dipendente
-            int[] mediaTurniPrecedenti = { 26, 29, 29, 27, 32, 28, 22, 31, 28, 23, 27, 23, 24 };
-
-            // Disponibilità
-            int[,] ferie = new int[dipendenti, giorni];
-            // Dipendente 1 in ferie dal 10 al 15
-            for (int d = 9; d <= 14; d++)
-            {
-                ferie[1, d] = 1;
-            }
-
-            // Definizione dei giorni festivi (1 indica festivo, 0 indica giorno lavorativo)
-            int[] festivi = new int[giorni];
-            for (int d = 0; d < giorni; d++)
-            {
-                var date = new DateTime(2024, 3, 1).AddDays(d);
-                if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
-                {
-                    festivi[d] = 1;
-                }
-            }
-            // Aggiunta di festività speciali
-            festivi[1] = 1; // 1 Aprile 2024 - Pasquetta
-            festivi[25] = 1; // 25 Aprile 2024 - Festa della Liberazione
-            festivi[30] = 1; // 1 Maggio 2024 - Festa dei Lavoratori
+            int[] previousShiftsAverage = GetShiftsAverage();
+            int[,] vacations = GetVacations(numberOfWorkers, numberOfDays);   
+            int[] holidays = GetHolidays(numberOfDays);
 
 
             // Vincoli: ogni turno deve avere esattamente un dipendente
             List<ILiteral> literals = new();
-            foreach (int d in allGiorni)
+            foreach (int d in allDays)
             {
-                foreach (int s in allTurni)
+                foreach (int s in allShifts)
                 {
-                    foreach (int n in allDipendenti)
+                    foreach (int n in allWorkers)
                     {
                         literals.Add(shifts[(n, d, s)]);
                     }
@@ -75,11 +133,11 @@ namespace ShiftBalance.MVC.Services
             }
 
             // Vincoli: ogni dipendente può lavorare al massimo un turno al giorno
-            foreach (int n in allDipendenti)
+            foreach (int n in allWorkers)
             {
-                foreach (int d in allGiorni)
+                foreach (int d in allDays)
                 {
-                    foreach (int s in allTurni)
+                    foreach (int s in allShifts)
                     {
                         literals.Add(shifts[(n, d, s)]);
                     }
@@ -89,13 +147,13 @@ namespace ShiftBalance.MVC.Services
             }
 
             // Vincoli: dipendenti non possono lavorare durante le ferie
-            for (int n = 0; n < allDipendenti.Length; n++)
+            for (int n = 0; n < allWorkers.Length; n++)
             {
-                for (int d = 0; d < allGiorni.Length; d++)
+                for (int d = 0; d < allDays.Length; d++)
                 {
-                    if (ferie[n, d] == 1)
+                    if (vacations[n, d] == 1)
                     {
-                        foreach (int s in allTurni)
+                        foreach (int s in allShifts)
                         {
                             model.Add(shifts[(n + 1, d + 1, s)] == 0);
                         }
@@ -108,9 +166,9 @@ namespace ShiftBalance.MVC.Services
             // minTurniPerDipendente shifts. If this is not possible, because the total
             // number of shifts is not divisible by the number of dipendenti, some dipendenti will
             // be assigned one more shift.
-            int minTurniPerDipendente = (turni * giorni) / dipendenti;
+            int minTurniPerDipendente = (ShiftsPerDay * numberOfDays) / numberOfWorkers;
             int maxTurniPerDipendente;
-            if ((turni * giorni) % dipendenti == 0)
+            if ((ShiftsPerDay * numberOfDays) % numberOfWorkers == 0)
             {
                 maxTurniPerDipendente = minTurniPerDipendente;
             }
@@ -120,11 +178,11 @@ namespace ShiftBalance.MVC.Services
             }
 
             List<IntVar> shiftsWorked = new();
-            foreach (int n in allDipendenti)
+            foreach (int n in allWorkers)
             {
-                foreach (int d in allGiorni)
+                foreach (int d in allDays)
                 {
-                    foreach (int s in allTurni)
+                    foreach (int s in allShifts)
                     {
                         shiftsWorked.Add(shifts[(n, d, s)]);
                     }
@@ -134,13 +192,13 @@ namespace ShiftBalance.MVC.Services
             }
 
             // Vincoli: un dipendente non può lavorare dopo una reperibilità festiva
-            for (int n = 0; n < dipendenti; n++)
+            for (int n = 0; n < numberOfWorkers; n++)
             {
-                for (int d = 0; d < giorni - 1; d++)
+                for (int d = 0; d < numberOfDays - 1; d++)
                 {
-                    if (festivi[d] == 1)
+                    if (holidays[d] == 1)
                     {
-                        foreach (int s in allTurni)
+                        foreach (int s in allShifts)
                         {
                             model.Add(shifts[(n + 1, d + 1, s)] + shifts[(n + 1, d + 2, s)] <= 1);
                         }
@@ -149,10 +207,10 @@ namespace ShiftBalance.MVC.Services
             }
 
             // Funzione obiettivo: minimizzare l'assegnazione di turni in base alla media dei turni precedenti
-            Google.OrTools.Sat.LinearExpr objective = Google.OrTools.Sat.LinearExpr.Sum(Enumerable.Range(1, dipendenti).SelectMany(n =>
-                                                Enumerable.Range(1, giorni).SelectMany(d =>
-                                                Enumerable.Range(1, turni).Select(s =>
-                                                shifts[(n, d, s)] * mediaTurniPrecedenti[n - 1]))));
+            Google.OrTools.Sat.LinearExpr objective = Google.OrTools.Sat.LinearExpr.Sum(Enumerable.Range(1, numberOfWorkers).SelectMany(n =>
+                                                Enumerable.Range(1, numberOfDays).SelectMany(d =>
+                                                Enumerable.Range(1, ShiftsPerDay).Select(s =>
+                                                shifts[(n, d, s)] * previousShiftsAverage[n - 1]))));
 
             model.Minimize(objective);
 
@@ -160,7 +218,7 @@ namespace ShiftBalance.MVC.Services
             CpSolver solver = new CpSolver();
             solver.StringParameters += "linearization_level:2";
 
-            SolutionPrinter cb = new SolutionPrinter(allDipendenti, allGiorni, allTurni, shifts);
+            SolutionPrinter cb = new SolutionPrinter(allWorkers, allDays, allShifts, shifts);
             CpSolverStatus status = solver.Solve(model, cb);
 
             Console.WriteLine($"Solve status: {status}");

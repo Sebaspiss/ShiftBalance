@@ -8,7 +8,7 @@
 
         public int NumberOfEmployees { get => _numberOfEmployees; }
         public int NumberOfDays { get => _numberOfDays; }
-        public int[,] Matrix { get => _matrix; }
+        public int[,] Matrix { get => _matrix; set => _matrix = value; }
 
         public ShiftMatrix(int employeesNumber, int daysNumber)
         {

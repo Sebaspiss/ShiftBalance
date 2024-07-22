@@ -1,4 +1,4 @@
-namespace ShiftBalance.MVC.Models
+namespace ShiftBalance.MVC.Models.ViewModels
 {
     public class ErrorViewModel
     {

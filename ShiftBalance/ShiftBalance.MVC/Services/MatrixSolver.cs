@@ -120,6 +120,7 @@ namespace ShiftBalance.MVC.Services
             }
         }
 
+        // Setta aperture e chiusure
         private void SetWorkingDays()
         {
             int openIndex = 0;
@@ -171,10 +172,36 @@ namespace ShiftBalance.MVC.Services
             {
                 for (int j = 0; j < _availability.NumberOfEmployees; j++)
                 {
-                    if (_availability.Matrix[j, i] == 1 && (_openings.Matrix[j, i] == 1 || _closings.Matrix[j, i] == 1))
+                    if (_availability.Matrix[j, i] == 1 && (_openings.Matrix[j, i + 1] == 1 || _closings.Matrix[j, i + 1] == 1))
                     {
-                        // Esegui lo swap
+                        Swap(j, i);
                     }
+                }
+            }
+        }
+
+        //spostare il turno al mercoledì (oppure ad altri giorni nel caso non fossero presenti turnisti disponibili);
+        //si esegue poi uno scambio con il primo turnista disponibile alla riga successiva procedendo verso il basso
+        //(se ci troviamo sull’ultima riga, si prosegue partendo dalla prima riga in alto);
+        //se il successivo turnista, risultasse in ferie, si passa al prossimo fino a trovare il primo disponibile
+        private void Swap(int workerIndex, int dayIndex)
+        {
+            int swapIndex = dayIndex + 2;
+
+            if (!(swapIndex > GetDaysInSchedule()))
+            {
+                int swapWorkerIndex = workerIndex + 1;
+
+                if (swapWorkerIndex >= _closings.NumberOfEmployees)
+                {
+                    swapWorkerIndex = 0;
+                }
+                var swapDay = _calendarMap[swapIndex];
+
+                if (swapDay.DayOfWeek == DayOfWeek.Wednesday && _openings.Matrix[swapWorkerIndex, dayIndex] == 0 && _closings.Matrix[swapWorkerIndex, dayIndex] == 0)
+                {
+                    _availability.Matrix[workerIndex, dayIndex] = 0;
+                    _availability.Matrix[swapWorkerIndex, dayIndex] = 1;
                 }
             }
         }

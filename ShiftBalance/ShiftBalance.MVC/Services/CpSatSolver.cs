@@ -218,7 +218,7 @@ namespace ShiftBalance.MVC.Services
             CpSolver solver = new CpSolver();
             solver.StringParameters += "linearization_level:2";
 
-            SolutionPrinter cb = new SolutionPrinter(allWorkers, allDays, allShifts, shifts);
+            CpSatSolutionPrinter cb = new CpSatSolutionPrinter(allWorkers, allDays, allShifts, shifts);
             CpSolverStatus status = solver.Solve(model, cb);
 
             Console.WriteLine($"Solve status: {status}");

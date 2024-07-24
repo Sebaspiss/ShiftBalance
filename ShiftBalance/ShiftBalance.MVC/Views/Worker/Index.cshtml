@@ -1,13 +1,14 @@
-﻿@    using System.Text.Json
-@model WorkerViewModel
+﻿@using System.Text.Json;
 @{
     ViewData["Title"] = "Worker";
     var jsonOptions = new JsonSerializerOptions()
             {
-                ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve,
-                WriteIndented = true
+                ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles,
+                WriteIndented = false              
             };
 }
+@model WorkerViewModel
+
 <table class="table table-striped">
     <thead class="bg-primary">
         <tr class="text-white">
@@ -25,7 +26,7 @@
         @foreach (Employee emp in Model.Employees)
         {
             var _employee = Model.Employees.Where(x => x.Id == emp.Id).FirstOrDefault();
-            var _vacations = _employee.Vacations.ToList();
+            var _vacations = _employee.Vacations;
             <tr>
                 <th scope="row">@emp.Id</th>
                 <td>@emp.Name</td>

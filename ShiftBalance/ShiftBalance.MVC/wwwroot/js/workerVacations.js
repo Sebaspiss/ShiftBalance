@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var surname = button.getAttribute('data-employee-surname');
         var vacations = button.getAttribute('data-employee-vacations')
 
+        console.log(vacations);
         vacations = JSON.parse(vacations);
 
         // update title

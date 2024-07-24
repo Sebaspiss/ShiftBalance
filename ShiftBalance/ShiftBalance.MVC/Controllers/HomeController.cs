@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using ShiftBalance.MVC.Models;
+using ShiftBalance.MVC.Models.ViewModels;
 using System.Diagnostics;
 
 namespace ShiftBalance.MVC.Controllers

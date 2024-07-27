@@ -59,7 +59,7 @@ namespace ShiftBalance.MVC.Services
             }
         }
 
-        public void Generate()
+        public void Solve()
         {
             // Compilo la matrice delle vacanze/festivi in modo da consultarla in seguito
             SetHolidays();

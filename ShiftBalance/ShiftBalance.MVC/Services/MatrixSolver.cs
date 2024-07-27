@@ -1,4 +1,5 @@
 ﻿using ShiftBalance.MVC.Models;
+using System.Diagnostics;
 
 namespace ShiftBalance.MVC.Services
 {
@@ -71,6 +72,13 @@ namespace ShiftBalance.MVC.Services
 
             // Gestire i conflitti
             SolveConflicts();
+
+            // Esporta in Excel
+            Excel.ShiftWorksheet worksheet = new(_workers, _openings, _closings, _availability, _calendarMap);
+            string fileFullname = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "ShiftBalance", $"plan_Matrix_{DateTime.UtcNow:yyyyMMddddHHmmss}");
+            worksheet.Generate(fileFullname);
+
+            Process.Start(fileFullname);
         }
 
         // Setta le reperibilità festive

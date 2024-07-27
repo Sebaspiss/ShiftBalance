@@ -218,10 +218,23 @@ namespace ShiftBalance.MVC.Services
             CpSolver solver = new CpSolver();
             solver.StringParameters += "linearization_level:2";
 
-            CpSatSolutionPrinter cb = new CpSatSolutionPrinter(allWorkers, allDays, allShifts, shifts);
+            CpSatSolutionPrinter cb = new CpSatSolutionPrinter(_workers, GetCalendarMap(allDays.Length), allWorkers, allDays, allShifts, shifts);
             CpSolverStatus status = solver.Solve(model, cb);
 
-            Console.WriteLine($"Solve status: {status}");
+        }
+
+        // Inizializzo la mappa giorno/data
+        private Dictionary<int,DateTime> GetCalendarMap(int numberOfDays)
+        {
+            int day = 0;
+            Dictionary<int, DateTime> calendarMap = [];
+
+            while (calendarMap.Count < numberOfDays)
+            {
+                calendarMap.Add(day, _startShift.AddDays(day));
+                day++;
+            }
+            return calendarMap;
         }
     }
 }

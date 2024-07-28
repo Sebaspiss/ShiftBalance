@@ -34,7 +34,7 @@
                 <div class="form-check">
                     @foreach (Employee emp in Model.Employees)
                     {
-                        <input class="form-check-input" type="checkbox" id="@emp.Id" name="employees" data-employee='@Html.Raw(Json.Serialize(emp))' checked>
+                        <input class="form-check-input" type="checkbox" id="@emp.Id" name="employees" data-employee='@Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(emp))' checked>
                         <label class="form-check-label ms-2" for="@emp.Id">@string.Format("{0} {1}",emp.Name,emp.Surname)</label>
                         <br />
                     }

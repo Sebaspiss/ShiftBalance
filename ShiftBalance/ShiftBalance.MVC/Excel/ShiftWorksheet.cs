@@ -14,7 +14,7 @@ namespace ShiftBalance.MVC.Excel
         private ShiftMatrix _closeings;
         private Dictionary<int, DateTime> _calendarMap;
 
-        protected uint styleIndex = 0;
+        protected uint styleIndex = 3;
         protected uint styleRedIndex = 2;
 
         private const int ROW_MONTHS_INDEX = 1;
@@ -72,7 +72,7 @@ namespace ShiftBalance.MVC.Excel
         // Returns three spreadsheet rows, one for months, one for weekDays and the other for daysNumber
         private List<OpenXmlElement> GetColumns()
         {
-            List<OpenXmlElement> columns = [];
+            List<OpenXmlElement> columns = new List<OpenXmlElement>();
 
             Row rowMonth = new() { RowIndex = ROW_MONTHS_INDEX };
             int startClmIndex = CLM_START_INDEX;
@@ -83,15 +83,16 @@ namespace ShiftBalance.MVC.Excel
             // Months
             for (int i = 0; i < _calendarMap.Count; i++)
             {
-                clmMonthIndex += i;
                 cellAppRef = ColumnMapper.GetColumnNameFromNumber(clmMonthIndex) + rowMonth.RowIndex;
                 rowMonth.Append(GetCell(cellAppRef, _calendarMap[i].ToString("MMMM"), styleIndex));
 
-                if (_calendarMap[i].Month != _calendarMap[i + 1].Month)
+                if (i == _calendarMap.Count -1 || _calendarMap[i].Month != _calendarMap[i + 1].Month)
                 {
                     AddMerge(startClmIndex, clmMonthIndex, ROW_MONTHS_INDEX, ROW_MONTHS_INDEX);
                     startClmIndex = clmMonthIndex + 1;
+
                 }
+                clmMonthIndex++;
             }
             columns.Add(rowMonth);
 
@@ -101,10 +102,10 @@ namespace ShiftBalance.MVC.Excel
             // WeekDays
             for (int j = 0; j < _calendarMap.Count; j++)
             {
-                clmMonthIndex += j;
                 cellAppRef = ColumnMapper.GetColumnNameFromNumber(clmMonthIndex) + rowWeekday.RowIndex;
                 styleIndex = GetStyleIndex(_calendarMap[j].DayOfWeek);
                 rowWeekday.Append(GetCell(cellAppRef, _calendarMap[j].ToString("ddd"), styleIndex));
+                clmMonthIndex++;
             }
             columns.Add(rowWeekday);
 
@@ -114,12 +115,12 @@ namespace ShiftBalance.MVC.Excel
             // Day
             for (int j = 0; j < _calendarMap.Count; j++)
             {
-                clmMonthIndex += j;
                 cellAppRef = ColumnMapper.GetColumnNameFromNumber(clmMonthIndex) + rowDay.RowIndex;
                 styleIndex = GetStyleIndex(_calendarMap[j].DayOfWeek);
-                rowWeekday.Append(GetCell(cellAppRef, _calendarMap[j].ToString("dd"), styleIndex));
+                rowDay.Append(GetCell(cellAppRef, _calendarMap[j].ToString("dd"), styleIndex));
+                clmMonthIndex++;
             }
-            columns.Add(rowWeekday);
+            columns.Add(rowDay);
 
             return columns;
         }
@@ -127,7 +128,7 @@ namespace ShiftBalance.MVC.Excel
         // Returns all workers schedule
         private List<OpenXmlElement> GetRows()
         {
-            List<OpenXmlElement> rows = [];
+            List<OpenXmlElement> rows = new List<OpenXmlElement>();
             string cellReference;
             string cellValue;
             int clmDayIndex = CLM_START_INDEX;
@@ -136,19 +137,19 @@ namespace ShiftBalance.MVC.Excel
             {
                 Row employeeRow = new() { RowIndex = ROW_START_INDEX + (uint)i };
 
-                cellReference = ColumnMapper.GetColumnNameFromNumber(CLM_START_INDEX) + employeeRow.RowIndex;
+                cellReference = ColumnMapper.GetColumnNameFromNumber(CLM_WORKERS_INDEX) + employeeRow.RowIndex;
                 string name = string.Format("{0} {1}", _workers[i].Name, _workers[i].Surname);
                 Cell employeeName = GetCell(cellReference, name, 0);
                 employeeRow.Append(employeeName);
 
-                for (int j = CLM_START_INDEX; j < CLM_START_INDEX + _calendarMap.Count; i++)
+                for (int j = CLM_START_INDEX; j < CLM_START_INDEX + _calendarMap.Count; j++)
                 {
-                    Cell employeeDay = new();
-                    clmDayIndex += j;
+                    Cell employeeDay;
+                    
                     cellReference = ColumnMapper.GetColumnNameFromNumber(clmDayIndex) + employeeRow.RowIndex;
-                    styleIndex = GetStyleIndex(_calendarMap[j].DayOfWeek);
+                    styleIndex = GetStyleIndex(_calendarMap[j-CLM_START_INDEX].DayOfWeek);
 
-                    if (styleIndex == 0)
+                    if (styleIndex == 3)
                     {
                         if (_openings.Matrix[i, j - CLM_START_INDEX] == 1)
                         {
@@ -177,6 +178,7 @@ namespace ShiftBalance.MVC.Excel
                         employeeDay = GetCell(cellReference, cellValue, styleIndex);
                     }
                     employeeRow.Append(employeeDay);
+                    clmDayIndex++;
                 }
                 clmDayIndex = CLM_START_INDEX;
                 rows.Add(employeeRow);
@@ -216,7 +218,7 @@ namespace ShiftBalance.MVC.Excel
             }
             else
             {
-                styleIndex = 0;
+                styleIndex = 3;
             }
             return styleIndex;
         }

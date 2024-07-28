@@ -25,18 +25,20 @@ namespace ShiftBalance.MVC.Services
         }
 
         // Genera l'excel con i giorni come colonne e dipendenti come righe
-        public void OnSolutionCallback(bool pippo)
+        public override void OnSolutionCallback()
         {
             ShiftMatrix openings = new(_allDipendenti.Length, _allDays.Length);
             ShiftMatrix closeings = new(_allDipendenti.Length, _allDays.Length);
             ShiftMatrix availability = new(_allDipendenti.Length, _allDays.Length);
             PopulateMatrixes(openings, closeings, availability);
 
-            string filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "ShiftBalance", $"plan_CpSat_{DateTime.UtcNow:yyyyMMddddHHmmss}");
+            string filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "ShiftBalance", $"plan_CpSat_{DateTime.UtcNow:yyyyMMddHHmmss}.xlsx");
             ShiftWorksheet worksheet = new(_workers, openings, closeings, availability, _calendar);
 
             worksheet.Generate(filePath);
-            Process.Start(filePath);
+            StopSearch();
+
+            ExcelProcess.OpenFile(filePath);
         }
 
         private void PopulateMatrixes(ShiftMatrix openings, ShiftMatrix closeings, ShiftMatrix availability)
@@ -50,35 +52,16 @@ namespace ShiftBalance.MVC.Services
                     {
                         openings.Matrix[i, j] = 0;
                         closeings.Matrix[i, j] = 0;
-                        availability.Matrix[i, j] = (Value(_shifts[(i, j, 1)]) > 0 || Value(_shifts[(i, j, 2)]) > 0) ? 1 : 0;
+                        availability.Matrix[i, j] = (Value(_shifts[(i + 1, j + 1, 1)]) > 0 || Value(_shifts[(i + 1, j + 1, 2)]) > 0) ? 1 : 0;
                     }
                     else
                     {
                         availability.Matrix[i, j] = 0;
-                        openings.Matrix[i, j] = (Value(_shifts[(i, j, 1)]) > 0) ? 1 : 0;
-                        closeings.Matrix[i, j] = (Value(_shifts[(i, j, 2)]) > 0) ? 1 : 0;
+                        openings.Matrix[i, j] = (Value(_shifts[(i + 1, j + 1, 1)]) > 0) ? 1 : 0;
+                        closeings.Matrix[i, j] = (Value(_shifts[(i + 1, j + 1, 2)]) > 0) ? 1 : 0;
                     }
                 }
             }
-        }
-
-        public override void OnSolutionCallback()
-        {
-            foreach (int d in _allDays)
-            {
-                Console.WriteLine($"Day {d}");
-                foreach (int n in _allDipendenti)
-                {
-                    foreach (int s in _allShifts)
-                    {
-                        if (Value(_shifts[(n, d, s)]) == 1L)
-                        {
-                            Console.WriteLine($"  Dipendente {n} work shift {s}");
-                        }
-                    }
-                }
-            }
-            StopSearch();
         }
 
         private bool IsAvailability(int dayNumber)

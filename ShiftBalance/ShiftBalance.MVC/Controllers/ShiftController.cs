@@ -25,10 +25,18 @@ namespace ShiftBalance.MVC.Controllers
 
         public IActionResult GenerateMatrixShift(string employees, DateTime fromDate, DateTime toDate)
         {
-            employees = employees.Replace("\\","").Trim();
-            Employee[] selected = System.Text.Json.JsonSerializer.Deserialize<Employee[]>(employees);
+            var selected = Newtonsoft.Json.JsonConvert.DeserializeObject<string[]>(employees);
+            var employeeList = new List<Employee>();
+            var vacations = _employeeService.GetVacations();
 
-            MatrixSolver solver = new(selected.ToList(), fromDate, toDate);
+            foreach (var jsonString in selected)
+            {
+                var employee = Newtonsoft.Json.JsonConvert.DeserializeObject<Employee>(jsonString);
+                employee.Vacations = vacations.Where(x=> x.IdEmployee == employee.Id).ToList();
+                employeeList.Add(employee);
+            }
+
+            MatrixSolver solver = new(employeeList, fromDate, toDate);
             solver.Solve();
 
             return Ok();
@@ -36,11 +44,23 @@ namespace ShiftBalance.MVC.Controllers
 
         public IActionResult GenerateCpSatShift(string employees, DateTime fromDate, DateTime toDate)
         {
-            var selected = System.Text.Json.JsonSerializer.Deserialize<List<Employee>>(employees);
+            var selected = Newtonsoft.Json.JsonConvert.DeserializeObject<string[]>(employees);
+            var employeeList = new List<Employee>();
+            var vacations = _employeeService.GetVacations();
 
-            CpSatSolver solver = new(selected, fromDate, toDate);
-            solver.Solve();
+            foreach (var jsonString in selected)
+            {
+                var employee = Newtonsoft.Json.JsonConvert.DeserializeObject<Employee>(jsonString);
+                employee.Vacations = vacations.Where(x => x.IdEmployee == employee.Id).ToList();
+                employeeList.Add(employee);
+            }
 
+            CpSatSolver solver = new(employeeList, fromDate, toDate);
+
+            if (solver.Solve() != Google.OrTools.Sat.CpSolverStatus.Feasible)
+            {
+                return NotFound();
+            }
             return Ok();
         }
     }

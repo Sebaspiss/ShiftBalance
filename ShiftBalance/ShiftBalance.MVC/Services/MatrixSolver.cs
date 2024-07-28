@@ -1,4 +1,5 @@
-﻿using ShiftBalance.MVC.Models;
+﻿using ShiftBalance.MVC.Excel;
+using ShiftBalance.MVC.Models;
 using System.Diagnostics;
 
 namespace ShiftBalance.MVC.Services
@@ -75,23 +76,54 @@ namespace ShiftBalance.MVC.Services
 
             // Esporta in Excel
             Excel.ShiftWorksheet worksheet = new(_workers, _openings, _closings, _availability, _calendarMap);
-            string fileFullname = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "ShiftBalance", $"plan_Matrix_{DateTime.UtcNow:yyyyMMddddHHmmss}");
+
+            string folderName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "ShiftBalance");
+            Directory.CreateDirectory(folderName);
+
+            string fileFullname = Path.Combine(folderName, $"plan_Matrix_{DateTime.UtcNow:yyyyMMddHHmmss}.xlsx");
             worksheet.Generate(fileFullname);
 
-            Process.Start(fileFullname);
+            ExcelProcess.OpenFile(fileFullname);
         }
 
         // Setta le reperibilità festive
         private void SetAvailabilty()
         {
-            int indexSeniorAvailable = _workers.Where(x => x.Profile == EmployeeProfile.Senior).Count();
-            int indexJuniorAvailable = _workers.Where(x => x.Profile == EmployeeProfile.Junior).Count();
+            int seniorsNumber = _workers.Where(x => x.Profile == EmployeeProfile.Senior).Count();
+            int juniorsNumber = _workers.Where(x => x.Profile == EmployeeProfile.Junior).Count();
+
+            IEnumerable<int> seniorIndexes = Enumerable.Range(0, seniorsNumber);
+            IEnumerable<int> juniorIndexes = Enumerable.Range(seniorsNumber, _workers.Count - seniorsNumber);
+
+            int indexSeniorAvailable = seniorIndexes.Last();
+            int indexJuniorAvailable = juniorIndexes.Last();
+
+            // la reperibilità vale per sabato e domenica, si scala weekend per weekend
+            int availabilityDaysCount = 0;
 
             for (int i = 0; i < _availability.NumberOfDays; i++)
             {
                 if (IsAvailability(i))
                 {
-                    // Verifica quali worker inserire
+                    // Uno junior e un senior a rotazione
+                    _availability.Matrix[indexSeniorAvailable, i] = 1;
+                    _availability.Matrix[indexJuniorAvailable, i] = 1;
+                    availabilityDaysCount++;
+
+                    if (availabilityDaysCount > 1)
+                    {
+                        indexSeniorAvailable--;
+                        indexJuniorAvailable--;
+                        availabilityDaysCount = 0;
+                    }
+                    if (indexSeniorAvailable < seniorIndexes.First())
+                    {
+                        indexSeniorAvailable = seniorIndexes.Last();
+                    }
+                    if (indexJuniorAvailable < juniorIndexes.First())
+                    {
+                        indexJuniorAvailable = juniorIndexes.Last();
+                    }
                 }
                 else
                 {
@@ -113,15 +145,18 @@ namespace ShiftBalance.MVC.Services
                 // il giorno dell'anno è un superfestivo assegnato o vacanza
                 for (int j = 0; j < _holidays.NumberOfEmployees; j++)
                 {
-                    foreach (var vacation in _workers[j].Vacations)
+                    if (_workers[j].Vacations != null)
                     {
-                        if (day == vacation.StartDate || (day > vacation.StartDate && day < vacation.EndDate))
+                        foreach (var vacation in _workers[j].Vacations)
                         {
-                            _holidays.Matrix[j, i] = 1;
-                        }
-                        else
-                        {
-                            _holidays.Matrix[j, i] = 0;
+                            if (day == vacation.StartDate || (day > vacation.StartDate && day < vacation.EndDate))
+                            {
+                                _holidays.Matrix[j, i] = 1;
+                            }
+                            else
+                            {
+                                _holidays.Matrix[j, i] = 0;
+                            }
                         }
                     }
                 }
@@ -134,11 +169,11 @@ namespace ShiftBalance.MVC.Services
             int openIndex = 0;
             int closeIndex = 1;
 
-            for (int i = 0; i < _openings.NumberOfDays; i++)
+            for (int i = 0; i < _openings.NumberOfDays - 1; i++)
             {
                 if (!IsAvailability(i))
                 {
-                    for (int j = 0; j < _openings.NumberOfEmployees; i++)
+                    for (int j = 0; j < _openings.NumberOfEmployees - 1; j++)
                     {
                         if (j == openIndex)
                             _openings.Matrix[j, i] = 1;
@@ -165,7 +200,7 @@ namespace ShiftBalance.MVC.Services
                 }
                 else
                 {
-                    for (int j = 0; j < _openings.NumberOfEmployees; i++)
+                    for (int j = 0; j < _openings.NumberOfEmployees - 1; j++)
                     {
                         _openings.Matrix[j, i] = 0;
                         _closings.Matrix[j, i] = 0;
@@ -176,9 +211,9 @@ namespace ShiftBalance.MVC.Services
 
         private void SolveConflicts()
         {
-            for (int i = 0; i < _availability.NumberOfDays; i++)
+            for (int i = 0; i < _availability.NumberOfDays-1; i++)
             {
-                for (int j = 0; j < _availability.NumberOfEmployees; j++)
+                for (int j = 0; j < _availability.NumberOfEmployees-1; j++)
                 {
                     if (_availability.Matrix[j, i] == 1)
                     {
@@ -211,7 +246,7 @@ namespace ShiftBalance.MVC.Services
                 {
                     swapWorkerIndex++;
 
-                    if (swapWorkerIndex >= _closings.NumberOfEmployees)
+                    if (swapWorkerIndex >= _closings.NumberOfEmployees-1)
                     {
                         swapWorkerIndex = 0;
                     }
@@ -242,7 +277,7 @@ namespace ShiftBalance.MVC.Services
 
         private int GetDaysInSchedule()
         {
-            return (int)_endDate.Subtract(_startDate).TotalDays;
+            return (int)_endDate.Subtract(_startDate).TotalDays+1;
         }
 
         private bool IsAvailability(int dayNumber)

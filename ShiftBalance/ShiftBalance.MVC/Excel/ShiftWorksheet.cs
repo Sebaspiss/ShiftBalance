@@ -103,7 +103,7 @@ namespace ShiftBalance.MVC.Excel
             for (int j = 0; j < _calendarMap.Count; j++)
             {
                 cellAppRef = ColumnMapper.GetColumnNameFromNumber(clmMonthIndex) + rowWeekday.RowIndex;
-                styleIndex = GetStyleIndex(_calendarMap[j].DayOfWeek);
+                styleIndex = GetStyleIndex(_calendarMap[j].DayOfWeek, CalendarFunctions.IsNationalHoliday(_calendarMap[j]));
                 rowWeekday.Append(GetCell(cellAppRef, _calendarMap[j].ToString("ddd"), styleIndex));
                 clmMonthIndex++;
             }
@@ -116,7 +116,7 @@ namespace ShiftBalance.MVC.Excel
             for (int j = 0; j < _calendarMap.Count; j++)
             {
                 cellAppRef = ColumnMapper.GetColumnNameFromNumber(clmMonthIndex) + rowDay.RowIndex;
-                styleIndex = GetStyleIndex(_calendarMap[j].DayOfWeek);
+                styleIndex = GetStyleIndex(_calendarMap[j].DayOfWeek, CalendarFunctions.IsNationalHoliday(_calendarMap[j]));
                 rowDay.Append(GetCell(cellAppRef, _calendarMap[j].ToString("dd"), styleIndex));
                 clmMonthIndex++;
             }
@@ -147,7 +147,7 @@ namespace ShiftBalance.MVC.Excel
                     Cell employeeDay;
                     
                     cellReference = ColumnMapper.GetColumnNameFromNumber(clmDayIndex) + employeeRow.RowIndex;
-                    styleIndex = GetStyleIndex(_calendarMap[j-CLM_START_INDEX].DayOfWeek);
+                    styleIndex = GetStyleIndex(_calendarMap[j-CLM_START_INDEX].DayOfWeek, CalendarFunctions.IsNationalHoliday(_calendarMap[j - CLM_START_INDEX]));
 
                     if (styleIndex == 3)
                     {
@@ -210,9 +210,9 @@ namespace ShiftBalance.MVC.Excel
         }
 
         // gets a number based of DayOfWeek
-        protected uint GetStyleIndex(DayOfWeek dayOfWeek)
+        protected uint GetStyleIndex(DayOfWeek dayOfWeek,bool isNationalHoliday)
         {
-            if (dayOfWeek == DayOfWeek.Saturday || dayOfWeek == DayOfWeek.Sunday)
+            if (dayOfWeek == DayOfWeek.Saturday || dayOfWeek == DayOfWeek.Sunday || isNationalHoliday)
             {
                 styleIndex = 2;
             }

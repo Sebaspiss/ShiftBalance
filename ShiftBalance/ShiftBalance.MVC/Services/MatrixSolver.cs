@@ -1,6 +1,5 @@
 ﻿using ShiftBalance.MVC.Excel;
 using ShiftBalance.MVC.Models;
-using System.Diagnostics;
 
 namespace ShiftBalance.MVC.Services
 {
@@ -98,7 +97,7 @@ namespace ShiftBalance.MVC.Services
             int indexSeniorAvailable = seniorIndexes.Last();
             int indexJuniorAvailable = juniorIndexes.Last();
 
-            // la reperibilità vale per sabato e domenica, si scala weekend per weekend
+            // la reperibilità vale per sabato e domenica, si scala weekend per weekend oppure se è un superfestivo
             int availabilityDaysCount = 0;
 
             for (int i = 0; i < _availability.NumberOfDays; i++)
@@ -110,7 +109,7 @@ namespace ShiftBalance.MVC.Services
                     _availability.Matrix[indexJuniorAvailable, i] = 1;
                     availabilityDaysCount++;
 
-                    if (availabilityDaysCount > 1)
+                    if (availabilityDaysCount > 1 || CalendarFunctions.IsNationalHoliday(_calendarMap[i]))
                     {
                         indexSeniorAvailable--;
                         indexJuniorAvailable--;
@@ -167,13 +166,13 @@ namespace ShiftBalance.MVC.Services
         private void SetWorkingDays()
         {
             int openIndex = 0;
-            int closeIndex = 1;
+            int closeIndex = _closings.NumberOfEmployees - 1;
 
-            for (int i = 0; i < _openings.NumberOfDays - 1; i++)
+            for (int i = 0; i < _openings.NumberOfDays; i++)
             {
                 if (!IsAvailability(i))
                 {
-                    for (int j = 0; j < _openings.NumberOfEmployees - 1; j++)
+                    for (int j = 0; j < _openings.NumberOfEmployees; j++)
                     {
                         if (j == openIndex)
                             _openings.Matrix[j, i] = 1;
@@ -200,7 +199,7 @@ namespace ShiftBalance.MVC.Services
                 }
                 else
                 {
-                    for (int j = 0; j < _openings.NumberOfEmployees - 1; j++)
+                    for (int j = 0; j < _openings.NumberOfEmployees; j++)
                     {
                         _openings.Matrix[j, i] = 0;
                         _closings.Matrix[j, i] = 0;
@@ -211,9 +210,9 @@ namespace ShiftBalance.MVC.Services
 
         private void SolveConflicts()
         {
-            for (int i = 0; i < _availability.NumberOfDays-1; i++)
+            for (int i = 0; i < _availability.NumberOfDays; i++)
             {
-                for (int j = 0; j < _availability.NumberOfEmployees-1; j++)
+                for (int j = 0; j < _availability.NumberOfEmployees; j++)
                 {
                     if (_availability.Matrix[j, i] == 1)
                     {
@@ -246,29 +245,30 @@ namespace ShiftBalance.MVC.Services
                 {
                     swapWorkerIndex++;
 
-                    if (swapWorkerIndex >= _closings.NumberOfEmployees-1)
+                    if (swapWorkerIndex >= _closings.NumberOfEmployees - 1)
                     {
                         swapWorkerIndex = 0;
                     }
-
-                    if (_openings.Matrix[swapWorkerIndex, swapDayIndex] == 0 && _closings.Matrix[swapWorkerIndex, swapDayIndex] == 0)
+                    // Tolgo il turno al lavoratore in violazione e lo do a quello di mercoledì
+                    // Il lavoratore in violazione lavorerà mercoledì
+                    if (type == ShiftType.Opening && _closings.Matrix[swapWorkerIndex, violationDayIndex] == 0 && _openings.Matrix[swapWorkerIndex, violationDayIndex + 1] == 0)
                     {
-                        // Tolgo il turno al lavoratore in violazione e lo do a quello di mercoledì
-                        // Il lavoratore in violazione lavorerà mercoledì
-                        if (type == ShiftType.Opening)
-                        {
-                            _openings.Matrix[workerIndex, violationDayIndex] = 0;
-                            _openings.Matrix[swapWorkerIndex, violationDayIndex] = 1;
-                            _openings.Matrix[workerIndex, swapDayIndex] = 1;
-                            _openings.Matrix[swapWorkerIndex, swapDayIndex] = 0;
-                        }
-                        else
-                        {
-                            _closings.Matrix[workerIndex, violationDayIndex] = 0;
-                            _closings.Matrix[swapWorkerIndex, violationDayIndex] = 1;
-                            _closings.Matrix[workerIndex, swapDayIndex] = 1;
-                            _closings.Matrix[swapWorkerIndex, swapDayIndex] = 0;
-                        }
+                        _openings.Matrix[workerIndex, violationDayIndex] = 0;
+                        _openings.Matrix[swapWorkerIndex, violationDayIndex] = 1;
+                        _openings.Matrix[workerIndex, swapDayIndex] = 1;
+                        _openings.Matrix[swapWorkerIndex, swapDayIndex] = 0;
+                        _closings.Matrix[swapWorkerIndex, violationDayIndex + 1] = 1;
+                        _closings.Matrix[workerIndex, violationDayIndex + 1] = 0;
+                        found = true;
+                    }
+                    else if (type == ShiftType.Closing && _openings.Matrix[swapWorkerIndex, violationDayIndex] == 0 && _closings.Matrix[swapWorkerIndex, violationDayIndex + 1] == 0)
+                    {
+                        _closings.Matrix[workerIndex, violationDayIndex] = 0;
+                        _closings.Matrix[swapWorkerIndex, violationDayIndex] = 1;
+                        _closings.Matrix[workerIndex, swapDayIndex] = 1;
+                        _closings.Matrix[swapWorkerIndex, swapDayIndex] = 0;
+                        _openings.Matrix[swapWorkerIndex, violationDayIndex + 1] = 0;
+                        _openings.Matrix[workerIndex, violationDayIndex + 1] = 1;
                         found = true;
                     }
                 } while (!found);
@@ -277,14 +277,14 @@ namespace ShiftBalance.MVC.Services
 
         private int GetDaysInSchedule()
         {
-            return (int)_endDate.Subtract(_startDate).TotalDays+1;
+            return (int)_endDate.Subtract(_startDate).TotalDays + 1;
         }
 
         private bool IsAvailability(int dayNumber)
         {
             var date = _calendarMap[dayNumber];
 
-            if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
+            if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday || CalendarFunctions.IsNationalHoliday(date))
             {
                 return true;
             }

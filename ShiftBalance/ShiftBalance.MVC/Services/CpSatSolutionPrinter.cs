@@ -68,11 +68,11 @@ namespace ShiftBalance.MVC.Services
         {
             var date = _calendar[dayNumber];
 
-            if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
+            if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday || CalendarFunctions.IsNationalHoliday(date))
             {
                 return true;
             }
             return false;
-        }
+        }      
     }
 }

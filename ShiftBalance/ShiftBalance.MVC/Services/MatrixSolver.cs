@@ -74,7 +74,7 @@ namespace ShiftBalance.MVC.Services
             SolveConflicts();
 
             // Esporta in Excel
-            Excel.ShiftWorksheet worksheet = new(_workers, _openings, _closings, _availability, _calendarMap);
+            Excel.ShiftWorksheet worksheet = new(_workers, _openings, _closings, _availability, _calendarMap, _holidays);
 
             string folderName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "ShiftBalance");
             Directory.CreateDirectory(folderName);
@@ -137,6 +137,8 @@ namespace ShiftBalance.MVC.Services
         // Setta le ferie e i superfestivi
         private void SetHolidays()
         {
+            List<Employee> employeesWithVacations = _workers.Where(x => x.Vacations != null).ToList();
+
             for (int i = 0; i < _holidays.NumberOfDays; i++)
             {
                 DateTime day = _calendarMap[i];
@@ -144,151 +146,212 @@ namespace ShiftBalance.MVC.Services
                 // il giorno dell'anno è un superfestivo assegnato o vacanza
                 for (int j = 0; j < _holidays.NumberOfEmployees; j++)
                 {
-                    if (_workers[j].Vacations != null)
+                    if (employeesWithVacations.Exists(x => x.Id == j + 1))
                     {
-                        foreach (var vacation in _workers[j].Vacations)
+                        Employee emp = employeesWithVacations.Where(y => y.Id == j + 1).First();
+
+                        if (emp.Vacations.Any(x => x.StartDate == day || (day > x.StartDate && day < x.EndDate)))
                         {
-                            if (day == vacation.StartDate || (day > vacation.StartDate && day < vacation.EndDate))
-                            {
-                                _holidays.Matrix[j, i] = 1;
-                            }
+                            _holidays.Matrix[j, i] = 1;
+                        }
+                        else
+                        {
+                            _holidays.Matrix[j, i] = 0;
+                        }
+                    }
+                }
+            }
+        }
+
+            // Setta aperture e chiusure
+            private void SetWorkingDays()
+            {
+                int openIndex = 0;
+                int closeIndex = _closings.NumberOfEmployees - 1;
+
+                for (int i = 0; i < _openings.NumberOfDays; i++)
+                {
+                    if (!IsAvailability(i))
+                    {
+                        for (int j = 0; j < _openings.NumberOfEmployees; j++)
+                        {
+                            if (j == openIndex)
+                                _openings.Matrix[j, i] = 1;
                             else
+                                _openings.Matrix[j, i] = 0;
+
+                            if (j == closeIndex)
+                                _closings.Matrix[j, i] = 1;
+                            else
+                                _closings.Matrix[j, i] = 0;
+                        }
+
+                        // INDICE DI ASSEGNAZIONE APERTURA
+                        if (openIndex == _openings.NumberOfEmployees - 1)
+                            openIndex = 0;
+                        else
+                            openIndex++;
+
+                        // INDICE DI ASSEGNAZIONE CHIUSURA
+                        if (closeIndex == _closings.NumberOfEmployees - 1)
+                            closeIndex = 0;
+                        else
+                            closeIndex++;
+                    }
+                    else
+                    {
+                        for (int j = 0; j < _openings.NumberOfEmployees; j++)
+                        {
+                            _openings.Matrix[j, i] = 0;
+                            _closings.Matrix[j, i] = 0;
+                        }
+                    }
+                }
+            }
+
+            private void SolveConflicts()
+            {
+                for (int i = 0; i < _availability.NumberOfDays; i++)
+                {
+                    for (int j = 0; j < _availability.NumberOfEmployees; j++)
+                    {
+                        // Gestione lavoro dopo reperibilità
+                        if (_availability.Matrix[j, i] == 1)
+                        {
+                            if (_openings.Matrix[j, i + 1] == 1)
                             {
-                                _holidays.Matrix[j, i] = 0;
+                                Swap(j, i + 1, ShiftType.Opening);
+                            }
+                            else if (_closings.Matrix[j, i + 1] == 1)
+                            {
+                                Swap(j, i + 1, ShiftType.Closing);
+                            }
+                        }
+
+                        // Gestione ferie/servizi/disponibilità
+                        if (_holidays.Matrix[j, i] == 1)
+                        {
+                            if (_openings.Matrix[j, i] == 1)
+                            {
+                                SwapTurn(j, i, ShiftType.Opening);
+                            }
+                            else if (_closings.Matrix[j, i] == 1)
+                            {
+                                SwapTurn(j, i, ShiftType.Closing);
                             }
                         }
                     }
                 }
             }
-        }
 
-        // Setta aperture e chiusure
-        private void SetWorkingDays()
-        {
-            int openIndex = 0;
-            int closeIndex = _closings.NumberOfEmployees - 1;
-
-            for (int i = 0; i < _openings.NumberOfDays; i++)
+            private void SwapTurn(int worker, int day, ShiftType shiftType)
             {
-                if (!IsAvailability(i))
+                var employees = _workers.Where(x => x.Profile == _workers[worker].Profile).OrderBy(y => y.ShiftAverage).ToList();
+                int swapIndex = 0;
+                int swapWorker = employees[swapIndex].Id - 1;
+
+                if (swapWorker == worker)
                 {
-                    for (int j = 0; j < _openings.NumberOfEmployees; j++)
-                    {
-                        if (j == openIndex)
-                            _openings.Matrix[j, i] = 1;
-                        else
-                            _openings.Matrix[j, i] = 0;
-
-                        if (j == closeIndex)
-                            _closings.Matrix[j, i] = 1;
-                        else
-                            _closings.Matrix[j, i] = 0;
-                    }
-
-                    // INDICE DI ASSEGNAZIONE APERTURA
-                    if (openIndex == _openings.NumberOfEmployees - 1)
-                        openIndex = 0;
-                    else
-                        openIndex++;
-
-                    // INDICE DI ASSEGNAZIONE CHIUSURA
-                    if (closeIndex == _closings.NumberOfEmployees - 1)
-                        closeIndex = 0;
-                    else
-                        closeIndex++;
+                    swapIndex = 1;
+                    swapWorker = employees[swapIndex].Id - 1;
                 }
-                else
+
+                if (shiftType == ShiftType.Opening)
                 {
-                    for (int j = 0; j < _openings.NumberOfEmployees; j++)
-                    {
-                        _openings.Matrix[j, i] = 0;
-                        _closings.Matrix[j, i] = 0;
-                    }
+                    _openings.Matrix[worker, day] = 0;
+                    _openings.Matrix[swapWorker, day] = 1;
+                }
+                else if (shiftType == ShiftType.Closing)
+                {
+                    _closings.Matrix[worker, day] = 0;
+                    _closings.Matrix[swapWorker, day] = 1;
                 }
             }
-        }
 
-        private void SolveConflicts()
-        {
-            for (int i = 0; i < _availability.NumberOfDays; i++)
+            //spostare il turno al mercoledì (oppure ad altri giorni nel caso non fossero presenti turnisti disponibili);
+            //si esegue poi uno scambio con il primo turnista disponibile alla riga successiva procedendo verso il basso
+            //(se ci troviamo sull’ultima riga, si prosegue partendo dalla prima riga in alto);
+            //se il successivo turnista, risultasse in ferie, si passa al prossimo fino a trovare il primo disponibile
+            private void Swap(int worker, int violationDay, ShiftType type)
             {
-                for (int j = 0; j < _availability.NumberOfEmployees; j++)
+                bool found = false;
+                int swapDay = violationDay + 2;
+
+                if (!(swapDay > GetDaysInSchedule()))
                 {
-                    if (_availability.Matrix[j, i] == 1)
+                    int swapWorker = worker + 1;
+                    int swapWorkerNext;
+                    do
                     {
-                        if (_openings.Matrix[j, i + 1] == 1)
+                        swapWorker++;
+
+                        if (swapWorker > _closings.NumberOfEmployees - 1)
                         {
-                            Swap(j, i + 1, ShiftType.Opening);
+                            swapWorker = 0;
                         }
-                        else if (_closings.Matrix[j, i + 1] == 1)
+                        swapWorkerNext = swapWorker + 1;
+
+                        if (swapWorkerNext > _closings.NumberOfEmployees - 1)
                         {
-                            Swap(j, i + 1, ShiftType.Closing);
+                            swapWorkerNext = 0;
                         }
-                    }
+                        // Tolgo il turno al lavoratore in violazione e lo do a quello di mercoledì
+                        // Il lavoratore in violazione lavorerà mercoledì
+                        if (type == ShiftType.Opening && _holidays.Matrix[swapWorker, violationDay] == 0 && _holidays.Matrix[swapWorker, violationDay + 1] == 0)
+                        {
+                            // Tolgo a workerIndex - violationDayIndex
+                            _openings.Matrix[worker, violationDay] = 0;
+                            _closings.Matrix[worker, violationDay + 1] = 0;
+                            // Assegno a swapWorkerIndex - violationDayIndex
+                            _openings.Matrix[swapWorker, violationDay] = 1;
+                            _closings.Matrix[swapWorker, violationDay + 1] = 1;
+                            // Assegno a workerIndex - swapDayIndex
+                            _openings.Matrix[worker, swapDay] = 1;
+                            _closings.Matrix[worker, swapDay + 1] = 1;
+                            // Tolgo a swapWorkerIndex - swapDayIndex
+                            _openings.Matrix[swapWorker, swapDay] = 0;
+                            _closings.Matrix[swapWorker, swapDay + 1] = 0;
+                            found = true;
+                        }
+                        else if (type == ShiftType.Closing && _holidays.Matrix[swapWorker, violationDay] == 0 && _holidays.Matrix[swapWorker, violationDay + 1] == 0)
+                        {
+                            // Tolgo a workerIndex - violationDayIndex
+                            _closings.Matrix[worker, violationDay] = 0;
+                            _openings.Matrix[worker, violationDay - 3] = 0;
+
+                            // Assegno a swapWorkerIndex - violationDayIndex
+                            _closings.Matrix[swapWorker, violationDay] = 1;
+                            _openings.Matrix[swapWorker, violationDay - 3] = 1;
+
+                            // Assegno a workerIndex - swapDayIndex
+                            _closings.Matrix[worker, swapDay] = 1;
+                            _openings.Matrix[worker, swapDay - 1] = 1;
+
+                            // Tolgo a swapWorkerIndex - swapDayIndex
+                            _openings.Matrix[swapWorker, swapDay - 1] = 0;
+                            _closings.Matrix[swapWorker, swapDay] = 0;
+                            _openings.Matrix[swapWorkerNext, swapDay - 1] = 0;
+                            _closings.Matrix[swapWorkerNext, swapDay] = 0;
+                            found = true;
+                        }
+                    } while (!found);
                 }
             }
-        }
 
-        //spostare il turno al mercoledì (oppure ad altri giorni nel caso non fossero presenti turnisti disponibili);
-        //si esegue poi uno scambio con il primo turnista disponibile alla riga successiva procedendo verso il basso
-        //(se ci troviamo sull’ultima riga, si prosegue partendo dalla prima riga in alto);
-        //se il successivo turnista, risultasse in ferie, si passa al prossimo fino a trovare il primo disponibile
-        private void Swap(int workerIndex, int violationDayIndex, ShiftType type)
-        {
-            bool found = false;
-            int swapDayIndex = violationDayIndex + 2;
-
-            if (!(swapDayIndex > GetDaysInSchedule()))
+            private int GetDaysInSchedule()
             {
-                int swapWorkerIndex = workerIndex;
-                do
+                return (int)_endDate.Subtract(_startDate).TotalDays + 1;
+            }
+
+            private bool IsAvailability(int dayNumber)
+            {
+                var date = _calendarMap[dayNumber];
+
+                if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday || CalendarFunctions.IsNationalHoliday(date))
                 {
-                    swapWorkerIndex++;
-
-                    if (swapWorkerIndex >= _closings.NumberOfEmployees - 1)
-                    {
-                        swapWorkerIndex = 0;
-                    }
-                    // Tolgo il turno al lavoratore in violazione e lo do a quello di mercoledì
-                    // Il lavoratore in violazione lavorerà mercoledì
-                    if (type == ShiftType.Opening && _closings.Matrix[swapWorkerIndex, violationDayIndex] == 0 && _openings.Matrix[swapWorkerIndex, violationDayIndex + 1] == 0)
-                    {
-                        _openings.Matrix[workerIndex, violationDayIndex] = 0;
-                        _openings.Matrix[swapWorkerIndex, violationDayIndex] = 1;
-                        _openings.Matrix[workerIndex, swapDayIndex] = 1;
-                        _openings.Matrix[swapWorkerIndex, swapDayIndex] = 0;
-                        _closings.Matrix[swapWorkerIndex, violationDayIndex + 1] = 1;
-                        _closings.Matrix[workerIndex, violationDayIndex + 1] = 0;
-                        found = true;
-                    }
-                    else if (type == ShiftType.Closing && _openings.Matrix[swapWorkerIndex, violationDayIndex] == 0 && _closings.Matrix[swapWorkerIndex, violationDayIndex + 1] == 0)
-                    {
-                        _closings.Matrix[workerIndex, violationDayIndex] = 0;
-                        _closings.Matrix[swapWorkerIndex, violationDayIndex] = 1;
-                        _closings.Matrix[workerIndex, swapDayIndex] = 1;
-                        _closings.Matrix[swapWorkerIndex, swapDayIndex] = 0;
-                        _openings.Matrix[swapWorkerIndex, violationDayIndex + 1] = 0;
-                        _openings.Matrix[workerIndex, violationDayIndex + 1] = 1;
-                        found = true;
-                    }
-                } while (!found);
+                    return true;
+                }
+                return false;
             }
-        }
-
-        private int GetDaysInSchedule()
-        {
-            return (int)_endDate.Subtract(_startDate).TotalDays + 1;
-        }
-
-        private bool IsAvailability(int dayNumber)
-        {
-            var date = _calendarMap[dayNumber];
-
-            if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday || CalendarFunctions.IsNationalHoliday(date))
-            {
-                return true;
-            }
-            return false;
         }
     }
-}

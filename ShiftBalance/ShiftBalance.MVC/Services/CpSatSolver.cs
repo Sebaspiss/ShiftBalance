@@ -53,6 +53,7 @@ namespace ShiftBalance.MVC.Services
         private int[,] GetVacations(int numberOfWorkers, int numberOfDays)
         {
             int[,] vacations = new int[numberOfWorkers, numberOfDays];
+            List<Employee> employeesWithVacations = _workers.Where(x => x.Vacations != null).ToList();
 
             for (int i = 0; i < numberOfDays; i++)
             {
@@ -61,23 +62,18 @@ namespace ShiftBalance.MVC.Services
                 // il giorno dell'anno è un superfestivo assegnato o vacanza
                 for (int j = 0; j < numberOfWorkers; j++)
                 {
-                    if (_workers[j].Vacations != null)
+                    if (employeesWithVacations.Exists(x => x.Id == j + 1))
                     {
-                        foreach (var vacation in _workers[j].Vacations)
+                        Employee emp = employeesWithVacations.Where(y => y.Id == j + 1).First();
+
+                        if (emp.Vacations.Any(x => x.StartDate == day || (day > x.StartDate && day < x.EndDate)))
                         {
-                            if (day == vacation.StartDate || (day > vacation.StartDate && day < vacation.EndDate))
-                            {
-                                vacations[j, i] = 1;
-                            }
-                            else
-                            {
-                                vacations[j, i] = 0;
-                            }
+                            vacations[j, i] = 1;
                         }
-                    }
-                    else
-                    {
-                        vacations[j, i] = 0;
+                        else
+                        {
+                            vacations[j, i] = 0;
+                        }
                     }
                 }
             }
@@ -252,7 +248,7 @@ namespace ShiftBalance.MVC.Services
             CpSolver solver = new CpSolver();
             solver.StringParameters += "linearization_level:2";
 
-            CpSatSolutionPrinter cb = new CpSatSolutionPrinter(_workers, calendar, allWorkers, allDays, allShifts, shifts);
+            CpSatSolutionPrinter cb = new CpSatSolutionPrinter(_workers, calendar, allWorkers, allDays, allShifts, shifts,vacations);
             CpSolverStatus status = solver.Solve(model, cb);
 
             return status;

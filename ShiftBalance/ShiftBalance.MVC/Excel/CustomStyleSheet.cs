@@ -55,6 +55,15 @@ namespace ShiftBalance.MVC.Excel
                     ForegroundColor = new ForegroundColor { Rgb = HexBinaryValue.FromString("D2042D") }//2- Red
                 }
             });
+            fills.AppendChild(new Fill()
+            {
+                PatternFill = new PatternFill
+                {
+                    PatternType = PatternValues.Solid,
+                    BackgroundColor = new BackgroundColor { Indexed = 64 },
+                    ForegroundColor = new ForegroundColor { Rgb = HexBinaryValue.FromString("ADD8E6") }//3-Light Blue
+                }
+            });
 
             return fills;
         }
@@ -80,7 +89,8 @@ namespace ShiftBalance.MVC.Excel
                 new CellFormat(), // Default style : Mandatory, reserved by Excel.
                 new CellFormat(), // Grey125 : Mandatory, reserved by Excel.
                 new CellFormat { FontId = 1, FillId = 2, BorderId = 1, ApplyBorder = true }, // Style index 2
-            new CellFormat { FontId = 1, FillId = 0, BorderId = 1, ApplyFill = true }); // Style index 3
+            new CellFormat { FontId = 1, FillId = 0, BorderId = 1, ApplyFill = true }, // Style index 3
+            new CellFormat { FontId = 1, FillId = 3, BorderId = 1, ApplyFill = true }); // Style index 4
 
             foreach (CellFormat cellFormat in cellFormats.Cast<CellFormat>())
             {

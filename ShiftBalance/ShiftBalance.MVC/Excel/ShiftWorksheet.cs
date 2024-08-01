@@ -12,6 +12,7 @@ namespace ShiftBalance.MVC.Excel
         private ShiftMatrix _availability;
         private ShiftMatrix _openings;
         private ShiftMatrix _closeings;
+        private ShiftMatrix _employeeHolidays;
         private Dictionary<int, DateTime> _calendarMap;
 
         protected uint styleIndex = 3;
@@ -25,7 +26,7 @@ namespace ShiftBalance.MVC.Excel
         private const int CLM_WORKERS_INDEX = 1;
         private const int CLM_START_INDEX = 2;
 
-        public ShiftWorksheet(List<Employee> workers, ShiftMatrix openings, ShiftMatrix closeings, ShiftMatrix availability, Dictionary<int, DateTime> calendar)
+        public ShiftWorksheet(List<Employee> workers, ShiftMatrix openings, ShiftMatrix closeings, ShiftMatrix availability, Dictionary<int, DateTime> calendar, ShiftMatrix employeeHolidays)
         {
             _workers = workers;
             _calendarMap = calendar;
@@ -33,6 +34,7 @@ namespace ShiftBalance.MVC.Excel
             _openings = openings;
             _closeings = closeings;
             _cellsToMerge = new MergeCells();
+            _employeeHolidays = employeeHolidays;
         }
 
         public void Generate(string fileFullname)
@@ -103,7 +105,7 @@ namespace ShiftBalance.MVC.Excel
             for (int j = 0; j < _calendarMap.Count; j++)
             {
                 cellAppRef = ColumnMapper.GetColumnNameFromNumber(clmMonthIndex) + rowWeekday.RowIndex;
-                styleIndex = GetStyleIndex(_calendarMap[j].DayOfWeek, CalendarFunctions.IsNationalHoliday(_calendarMap[j]));
+                styleIndex = GetStyleIndex(_calendarMap[j].DayOfWeek, CalendarFunctions.IsNationalHoliday(_calendarMap[j]),false);
                 rowWeekday.Append(GetCell(cellAppRef, _calendarMap[j].ToString("ddd"), styleIndex));
                 clmMonthIndex++;
             }
@@ -116,7 +118,7 @@ namespace ShiftBalance.MVC.Excel
             for (int j = 0; j < _calendarMap.Count; j++)
             {
                 cellAppRef = ColumnMapper.GetColumnNameFromNumber(clmMonthIndex) + rowDay.RowIndex;
-                styleIndex = GetStyleIndex(_calendarMap[j].DayOfWeek, CalendarFunctions.IsNationalHoliday(_calendarMap[j]));
+                styleIndex = GetStyleIndex(_calendarMap[j].DayOfWeek, CalendarFunctions.IsNationalHoliday(_calendarMap[j]),false);
                 rowDay.Append(GetCell(cellAppRef, _calendarMap[j].ToString("dd"), styleIndex));
                 clmMonthIndex++;
             }
@@ -147,7 +149,9 @@ namespace ShiftBalance.MVC.Excel
                     Cell employeeDay;
                     
                     cellReference = ColumnMapper.GetColumnNameFromNumber(clmDayIndex) + employeeRow.RowIndex;
-                    styleIndex = GetStyleIndex(_calendarMap[j-CLM_START_INDEX].DayOfWeek, CalendarFunctions.IsNationalHoliday(_calendarMap[j - CLM_START_INDEX]));
+                    bool isWorkerHoliday = _employeeHolidays.Matrix[i, j - CLM_START_INDEX] == 1;
+
+                    styleIndex = GetStyleIndex(_calendarMap[j-CLM_START_INDEX].DayOfWeek, CalendarFunctions.IsNationalHoliday(_calendarMap[j - CLM_START_INDEX]), isWorkerHoliday);
 
                     if (styleIndex == 3)
                     {
@@ -163,6 +167,11 @@ namespace ShiftBalance.MVC.Excel
                         {
                             cellValue = "";
                         }
+                        employeeDay = GetCell(cellReference, cellValue, styleIndex);
+                    }
+                    else if (styleIndex == 4)
+                    {
+                        cellValue = "F";
                         employeeDay = GetCell(cellReference, cellValue, styleIndex);
                     }
                     else
@@ -210,15 +219,22 @@ namespace ShiftBalance.MVC.Excel
         }
 
         // gets a number based of DayOfWeek
-        protected uint GetStyleIndex(DayOfWeek dayOfWeek,bool isNationalHoliday)
+        protected uint GetStyleIndex(DayOfWeek dayOfWeek,bool isNationalHoliday,bool isWorkerVacation)
         {
-            if (dayOfWeek == DayOfWeek.Saturday || dayOfWeek == DayOfWeek.Sunday || isNationalHoliday)
+            if (!isWorkerVacation)
             {
-                styleIndex = 2;
+                if (dayOfWeek == DayOfWeek.Saturday || dayOfWeek == DayOfWeek.Sunday || isNationalHoliday)
+                {
+                    styleIndex = 2;
+                }
+                else
+                {
+                    styleIndex = 3;
+                }
             }
             else
             {
-                styleIndex = 3;
+                styleIndex = 4;
             }
             return styleIndex;
         }

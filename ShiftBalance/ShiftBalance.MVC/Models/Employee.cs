@@ -14,6 +14,9 @@ namespace ShiftBalance.MVC.Models
         public DateTime DateOfHiring { get; set; }
         public DateTime DateOfBirth { get; set; }
         public int ShiftAverage { get; set; }
+        public int Openings { get; set; }
+        public int Closings { get; set; }
+        public int Availability { get; set; }
 
         public ICollection<EmployeeVacations> Vacations { get; set; }
     }

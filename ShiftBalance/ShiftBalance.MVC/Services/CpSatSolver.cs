@@ -20,6 +20,193 @@ namespace ShiftBalance.MVC.Services
             _endShift = endShift;
         }
 
+        public CpSolverStatus Solve()
+        {
+            // DATA
+            int numberOfWorkers = _workers.Count;
+            int numberOfDays = (int)_endShift.Subtract(_startShift).TotalDays + 1;
+
+            Dictionary<int, DateTime> calendar = GetCalendarMap(numberOfDays);
+
+            int[] allWorkers = GetWorkersInSchedule();
+            int[] allDays = GetDaysInSchedule();
+            int[] allShifts = GetShiftsPerDay();
+
+            // medie turni
+            int[] previousShiftAverageOpening = GetOpeningsAverage();
+            int[] previousShiftAverageClosing = GetClosingsAverage();
+            int[] previousShiftAverageHoliday = GetAvailabilityAverage();
+
+            // Vacanze
+            int[,] vacations = GetVacations(numberOfWorkers, numberOfDays);
+
+            // #### MODELLO ####
+            CpModel model = new();
+            model.Model.Variables.Capacity = numberOfWorkers * numberOfDays * ShiftsPerDay;
+
+            // variabili
+            Dictionary<(int, int, int), BoolVar> shifts = new(numberOfWorkers * numberOfDays * ShiftsPerDay);
+            foreach (int n in allWorkers)
+            {
+                foreach (int d in allDays)
+                {
+                    foreach (int s in allShifts)
+                    {
+                        shifts.Add((n, d, s), model.NewBoolVar($"shifts_n{n}d{d}s{s}"));
+                    }
+                }
+            }
+
+            // Vincoli: ogni turno deve avere esattamente un dipendente
+            List<ILiteral> literals = new();
+            foreach (int d in allDays)
+            {
+                foreach (int s in allShifts)
+                {
+                    literals.Clear();
+                    foreach (int n in allWorkers)
+                    {
+                        literals.Add(shifts[(n, d, s)]);
+                    }
+                    model.AddExactlyOne(literals);
+                }
+            }
+
+            // Vincoli: ogni dipendente può lavorare al massimo un turno al giorno
+            foreach (int n in allWorkers)
+            {
+                foreach (int d in allDays)
+                {
+                    literals.Clear();
+                    foreach (int s in allShifts)
+                    {
+                        literals.Add(shifts[(n, d, s)]);
+                    }
+                    model.AddAtMostOne(literals);
+                }
+            }
+
+            // Vincoli: dipendenti non possono lavorare durante le ferie
+            for (int n = 0; n < allWorkers.Length; n++)
+            {
+                for (int d = 0; d < allDays.Length; d++)
+                {
+                    if (vacations[n, d] == 1)
+                    {
+                        foreach (int s in allShifts)
+                        {
+                            if (n < allWorkers.Length && d < allDays.Length)
+                            {
+                                model.Add(shifts[(n + 1, d + 1, s)] == 0);
+                            }
+                        }
+                    }
+                }
+            }
+
+            //// Vincoli: un dipendente non può lavorare dopo una reperibilità festiva
+            for (int n = 0; n < numberOfWorkers; n++)
+            {
+                for (int d = 0; d < numberOfDays; d++)
+                {
+                    // giorno reperibilità con controllo bounds
+                    if (IsAvailability(calendar[d]) && (d + 2 < numberOfDays))
+                    {
+                        // variabile ausiliaria per stabilire se lavora o meno il weekend
+                        BoolVar worksWeekend = model.NewBoolVar($"works_weekend_n{n}_d{d}");
+
+                        // Constraints
+                        model.AddMaxEquality(worksWeekend,
+                            [
+                                shifts[(n + 1, d + 1, 1)], shifts[(n + 1, d + 1, 2)],  // Sabato
+                                shifts[(n + 1, d + 2, 1)], shifts[(n + 1, d + 2, 2)]   // Domenica
+                            ]
+                        );
+                        model.Add(shifts[(n + 1, d + 3, 1)] + shifts[(n + 1, d + 3, 2)] <= (1 - worksWeekend)
+                        );
+                    }
+                }
+            }
+
+            int avgOpening = (int)Math.Round(previousShiftAverageOpening.Average() * 0.85, MidpointRounding.AwayFromZero);
+            int avgClosing = (int)Math.Round(previousShiftAverageClosing.Average() * 0.85, MidpointRounding.AwayFromZero);
+            int avgHoliday = (int)Math.Round(previousShiftAverageHoliday.Average() * 0.85,MidpointRounding.AwayFromZero);
+
+            List<Google.OrTools.Sat.LinearExpr> penalties = new List<Google.OrTools.Sat.LinearExpr>();
+
+            foreach (int n in Enumerable.Range(1, numberOfWorkers))
+            {
+                Google.OrTools.Sat.LinearExpr openingShifts = Google.OrTools.Sat.LinearExpr.Sum(
+                    Enumerable.Range(1, numberOfDays).Select(d => shifts[(n, d, 1)])
+                );
+                Google.OrTools.Sat.LinearExpr closingShifts = Google.OrTools.Sat.LinearExpr.Sum(
+                    Enumerable.Range(1, numberOfDays).Select(d => shifts[(n, d, 2)])
+                );
+                Google.OrTools.Sat.LinearExpr holidayShifts = Google.OrTools.Sat.LinearExpr.Sum(
+                    Enumerable.Range(1, numberOfDays).Where(d => IsAvailability(calendar[d - 1])).SelectMany(d => allShifts.Select(s => shifts[(n, d, s)]))
+                );
+
+                // Creare variabili per rappresentare il deficit rispetto ai target
+                int targetOpening = Math.Max(0, avgOpening+1 - previousShiftAverageOpening[n - 1]);
+                int targetClosing = Math.Max(0, avgClosing+1 - previousShiftAverageClosing[n - 1]);
+                int targetHoliday = Math.Max(0, avgHoliday+2 - previousShiftAverageHoliday[n - 1]);
+
+                IntVar openingDeficit = model.NewIntVar(0, targetOpening, $"openingDeficit{n}");
+                IntVar closingDeficit = model.NewIntVar(0, targetClosing, $"closingDeficit{n}");
+                IntVar holidayDeficit = model.NewIntVar(0, targetHoliday, $"holidayDeficit{n}");
+
+                // Aggiungere vincoli che collegano le variabili di deficit con i turni effettivi
+                model.Add(openingDeficit > targetOpening - openingShifts);
+                model.Add(closingDeficit > targetClosing - closingShifts);
+                model.Add(holidayDeficit > targetHoliday - holidayShifts);
+
+                // Aggiungere le variabili di deficit alle penalità
+                penalties.Add(openingDeficit);
+                penalties.Add(closingDeficit);
+                penalties.Add(holidayDeficit);
+            }
+
+            // Minimizzare la somma delle penalità
+            Google.OrTools.Sat.LinearExpr totalPenalty = Google.OrTools.Sat.LinearExpr.Sum(penalties);
+            model.Minimize(totalPenalty);
+
+            //Soluzione
+            CpSolver solver = new CpSolver();
+            solver.StringParameters = "linearization_level:2";
+
+            CpSatSolutionPrinter cb = new CpSatSolutionPrinter(_workers, calendar, allWorkers, allDays, allShifts, shifts, vacations);
+            CpSolverStatus status = solver.Solve(model, cb);
+
+            return status;
+        }
+
+        // Inizializzo la mappa giorno/data
+        private Dictionary<int, DateTime> GetCalendarMap(int numberOfDays)
+        {
+            int day = 0;
+            Dictionary<int, DateTime> calendarMap = [];
+
+            while (calendarMap.Count < numberOfDays)
+            {
+                calendarMap.Add(day, _startShift.AddDays(day));
+                day++;
+            }
+            return calendarMap;
+        }
+
+        // è un giorno di reperibilità?
+        private static bool IsAvailability(DateTime day)
+        {
+            if (day.DayOfWeek == DayOfWeek.Saturday || day.DayOfWeek == DayOfWeek.Sunday)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         private static int[] GetShiftsPerDay()
         {
             return Enumerable.Range(1, 2).ToArray();
@@ -35,18 +222,6 @@ namespace ShiftBalance.MVC.Services
         private int[] GetWorkersInSchedule()
         {
             return Enumerable.Range(1, _workers.Count).ToArray();
-        }
-
-        // Media dei turni precedentemente lavorati per ogni dipendente
-        private int[] GetShiftsAverage()
-        {
-            int[] averages = new int[_workers.Count];
-
-            for (int i = 0; i < averages.Length; i++)
-            {
-                averages[i] = _workers[i].ShiftAverage;
-            }
-            return averages;
         }
 
         // Media delle aperture
@@ -115,208 +290,6 @@ namespace ShiftBalance.MVC.Services
                 }
             }
             return vacations;
-        }
-
-        // Definizione dei giorni festivi (1 indica festivo, 0 indica giorno lavorativo)
-        private int[] GetAvailability(int numberOfDays)
-        {
-            int[] availability = new int[numberOfDays];
-
-            for (int d = 0; d < numberOfDays; d++)
-            {
-                var date = _startShift.AddDays(d);
-
-                if (IsAvailability(date))
-                {
-                    availability[d] = 1;
-                }
-            }
-            return availability;
-        }
-
-        public CpSolverStatus Solve()
-        {
-            //DATA
-            int numberOfWorkers = _workers.Count;
-            int numberOfDays = (int)_endShift.Subtract(_startShift).TotalDays + 1;
-            Dictionary<int, DateTime> calendar = GetCalendarMap(numberOfDays);
-
-            int[] allWorkers = GetWorkersInSchedule();
-            int[] allDays = GetDaysInSchedule();
-            int[] allShifts = GetShiftsPerDay();
-
-            //MODELLO
-            CpModel model = new();
-            model.Model.Variables.Capacity = numberOfWorkers * numberOfDays * ShiftsPerDay;
-
-            // variabili
-            Dictionary<(int, int, int), BoolVar> shifts = new(numberOfWorkers * numberOfDays * ShiftsPerDay);
-            foreach (int n in allWorkers)
-            {
-                foreach (int d in allDays)
-                {
-                    foreach (int s in allShifts)
-                    {
-                        shifts.Add((n, d, s), model.NewBoolVar($"shifts_n{n}d{d}s{s}"));
-                    }
-                }
-            }
-
-            // medie turni
-            int[] previousShiftAverageOpening = GetOpeningsAverage();
-            int[] previousShiftAverageClosing = GetClosingsAverage();
-            int[] previousShiftAverageHoliday = GetAvailabilityAverage();
-
-            // Vacanze
-            int[,] vacations = GetVacations(numberOfWorkers, numberOfDays);
-            int[] availability = GetAvailability(numberOfDays);
-
-
-            // Vincoli: ogni turno deve avere esattamente un dipendente
-            List<ILiteral> literals = new();
-            foreach (int d in allDays)
-            {
-                foreach (int s in allShifts)
-                {
-                    literals.Clear();
-                    foreach (int n in allWorkers)
-                    {
-                        literals.Add(shifts[(n, d, s)]);
-                    }
-                    model.AddExactlyOne(literals);
-                }
-            }
-
-            // Vincoli: ogni dipendente può lavorare al massimo un turno al giorno
-            foreach (int n in allWorkers)
-            {
-                foreach (int d in allDays)
-                {
-                    literals.Clear();
-                    foreach (int s in allShifts)
-                    {
-                        literals.Add(shifts[(n, d, s)]);
-                    }
-                    model.AddAtMostOne(literals);
-                }
-            }
-
-            // Vincoli: dipendenti non possono lavorare durante le ferie
-            for (int n = 0; n < allWorkers.Length; n++)
-            {
-                for (int d = 0; d < allDays.Length; d++)
-                {
-                    if (vacations[n, d] == 1)
-                    {
-                        foreach (int s in allShifts)
-                        {
-                            if (n < allWorkers.Length && d < allDays.Length)
-                            {
-                                model.Add(shifts[(n + 1, d + 1, s)] == 0);
-                            }
-                        }
-                    }
-                }
-            }
-
-            //// Vincoli: un dipendente non può lavorare dopo una reperibilità festiva
-            for (int n = 0; n < numberOfWorkers; n++)
-            {
-                for (int d = 0; d < numberOfDays; d++)
-                {
-                    // Check if the day is Saturday or Sunday and ensure it doesn't go out of bounds
-                    if ((IsAvailability(calendar[d])) && (d + 2 < numberOfDays))
-                    {
-                        // Auxiliary variable to check if the worker works on Saturday or Sunday
-                        BoolVar worksWeekend = model.NewBoolVar($"works_weekend_n{n}_d{d}");
-
-                        // Constraints to set the value of worksWeekend
-                        model.AddMaxEquality(
-                            worksWeekend,
-                            new IntVar[] {
-                    shifts[(n + 1, d + 1, 1)], shifts[(n + 1, d + 1, 2)],  // Shifts on Saturday
-                    shifts[(n + 1, d + 2, 1)], shifts[(n + 1, d + 2, 2)]   // Shifts on Sunday
-                            }
-                        );
-
-                        // Constraint to ensure no work on Monday if worked on the weekend
-                        model.Add(shifts[(n + 1, d + 3, 1)] + shifts[(n + 1, d + 3, 2)] <= (1 - worksWeekend)
-                        );
-                    }
-                }
-            }
-
-            // Calculate normalization factors (maximum number of shifts any worker has had)
-            int maxOpeningShifts = previousShiftAverageOpening.Max();
-            int maxClosingShifts = previousShiftAverageClosing.Max();
-            int maxHolidayShifts = previousShiftAverageHoliday.Max();
-
-            // FUNZIONE OBIETTIVO
-            List<Google.OrTools.Sat.LinearExpr> objectiveTerms = new List<Google.OrTools.Sat.LinearExpr>();
-
-            foreach (int n in Enumerable.Range(1, numberOfWorkers))
-            {
-                // Subtract the worker's shift average from the max to give more shifts to those with less
-                int openingWeight = maxOpeningShifts - previousShiftAverageOpening[n - 1];
-                int closingWeight = maxClosingShifts - previousShiftAverageClosing[n - 1];
-                int holidayWeight = maxHolidayShifts - previousShiftAverageHoliday[n - 1];
-
-                foreach (int d in Enumerable.Range(1, numberOfDays))
-                {
-                    // Add weighted terms to the objective function
-                    objectiveTerms.Add(shifts[(n, d, 1)] * openingWeight);
-                    objectiveTerms.Add(shifts[(n, d, 2)] * closingWeight);
-
-                    // Handle holiday shifts, if the day is a holiday
-                    if (IsAvailability(calendar[d - 1]))
-                    {
-                        foreach (int s in allShifts)  // Assuming allShifts includes holidays at specific indices
-                        {
-                            objectiveTerms.Add(shifts[(n, d, s)] * holidayWeight);
-                        }
-                    }
-                }
-            }
-            // Somma tutte le espressioni lineari per costruire l'obiettivo finale
-            Google.OrTools.Sat.LinearExpr objective = Google.OrTools.Sat.LinearExpr.Sum(objectiveTerms);
-
-            // Aggiungi la funzione obiettivo al modello
-            model.Minimize(objective);
-
-            //Soluzione
-            CpSolver solver = new CpSolver();
-            solver.StringParameters += "linearization_level:2";
-
-            CpSatSolutionPrinter cb = new CpSatSolutionPrinter(_workers, calendar, allWorkers, allDays, allShifts, shifts, vacations);
-            CpSolverStatus status = solver.Solve(model, cb);
-
-            return status;
-        }
-
-        // Inizializzo la mappa giorno/data
-        private Dictionary<int, DateTime> GetCalendarMap(int numberOfDays)
-        {
-            int day = 0;
-            Dictionary<int, DateTime> calendarMap = [];
-
-            while (calendarMap.Count < numberOfDays)
-            {
-                calendarMap.Add(day, _startShift.AddDays(day));
-                day++;
-            }
-            return calendarMap;
-        }
-
-        private static bool IsAvailability(DateTime day)
-        {
-            if (day.DayOfWeek == DayOfWeek.Saturday || day.DayOfWeek == DayOfWeek.Sunday)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
         }
     }
 }

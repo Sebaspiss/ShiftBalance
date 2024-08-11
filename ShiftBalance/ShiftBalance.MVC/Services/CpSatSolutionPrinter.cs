@@ -1,7 +1,6 @@
 ﻿using Google.OrTools.Sat;
 using ShiftBalance.MVC.Excel;
 using ShiftBalance.MVC.Models;
-using System.Diagnostics;
 
 namespace ShiftBalance.MVC.Services
 {
@@ -63,7 +62,7 @@ namespace ShiftBalance.MVC.Services
                 for (int j = 0; j < _allDays.Length; j++)
                 {
                     // Reperibilità?
-                    if (IsAvailability(j))
+                    if (IsAvailabilityOrNationalHoliday(j))
                     {
                         openings.Matrix[i, j] = 0;
                         closeings.Matrix[i, j] = 0;
@@ -79,7 +78,7 @@ namespace ShiftBalance.MVC.Services
             }
         }
 
-        private bool IsAvailability(int dayNumber)
+        private bool IsAvailabilityOrNationalHoliday(int dayNumber)
         {
             var date = _calendar[dayNumber];
 

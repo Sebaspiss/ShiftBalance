@@ -8,6 +8,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{47F1640D-5B5D-4B57-BE38-818D0D9DED79}"
 	ProjectSection(SolutionItems) = preProject
 		Database_create_script.sql = Database_create_script.sql
+		EmployeeData.csv = EmployeeData.csv
+		EmployeeVacationsData.csv = EmployeeVacationsData.csv
 	EndProjectSection
 EndProject
 Global

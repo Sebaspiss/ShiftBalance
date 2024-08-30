@@ -3,28 +3,32 @@ document.addEventListener('DOMContentLoaded', function () {
     var infoModal = document.getElementById('infoModal');
 
     infoModal.addEventListener('show.bs.modal', function (event) {
-        var button = event.relatedTarget;
-        var surname = button.getAttribute('data-employee-surname');
-        var vacations = button.getAttribute('data-employee-vacations')
+        var button = event.relatedTarget; // Button that triggered the modal
+        var employeeSurname = button.getAttribute('data-employee-surname');
+        var employeeVacations = button.getAttribute('data-employee-vacations');
 
-        console.log(vacations);
-        vacations = JSON.parse(vacations);
+        var modalTitle = infoModal.querySelector('.modal-title');
+        var modalBody = infoModal.querySelector('.modal-body');
 
-        // update title
-        var title = document.getElementById('infoModalLabel');
-        title.innerHTML = '<p>Vacations of ' + surname + '</p>';
+        // Set the title
+        modalTitle.textContent = 'Vacations for ' + employeeSurname;
 
-        // Update the modal content
-        var modalBody = document.getElementById('modal-body-content');
-        modalBody.innerHTML = "";
+        // Parse the vacations JSON data
+        var vacations = JSON.parse(employeeVacations);
 
-        vacations.forEach(function (vacation) {
-            modalBody.innerHTML += '<p>DA ' + vacation + ' A ' + vacation + '</p>';
-        });
+        // Check if vacations is empty
+        if (vacations.length > 0) {
+            // Clear the modal body content
+            modalBody.innerHTML = '';
+
+            // Display the vacations
+            vacations.forEach(function (vacation) {
+                var vacationItem = document.createElement('p');
+                vacationItem.textContent = 'FROM ' + vacation.StartDate.split('T')[0] + ' TO ' + vacation.EndDate.split('T')[0];
+                modalBody.appendChild(vacationItem);
+            });
+        } else {
+            modalBody.textContent = 'No vacations available.';
+        }
     });
-    //TODO: SISTEMA VISUALIZZAZIONE FERIE
-    function formatDate(dateString) {
-        var options = { year: 'numeric', month: 'short', day: 'numeric' };
-        return new Date(dateString).toLocaleDateString(undefined, options);
-    }
 });

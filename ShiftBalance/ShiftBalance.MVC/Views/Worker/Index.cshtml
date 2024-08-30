@@ -4,7 +4,7 @@
     var jsonOptions = new JsonSerializerOptions()
             {
                 ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles,
-                WriteIndented = false              
+                WriteIndented = false
             };
 }
 @model WorkerViewModel
@@ -26,7 +26,7 @@
         @foreach (Employee emp in Model.Employees)
         {
             var _employee = Model.Employees.Where(x => x.Id == emp.Id).FirstOrDefault();
-            var _vacations = _employee.Vacations;
+            var _vacations = _employee.Vacations.ToList();
             <tr>
                 <th scope="row">@emp.Id</th>
                 <td>@emp.Name</td>
@@ -38,8 +38,8 @@
                     <a class="nav-link"
                        style="cursor: pointer;"
                        data-employee-surname="@emp.Surname"
-                       data-employee-vacations="@Json.Serialize(_vacations),jsonOptions)"
-                       data-bs-toggle="modal"
+                    data-employee-vacations="@Newtonsoft.Json.JsonConvert.SerializeObject(_vacations,new Newtonsoft.Json.JsonSerializerSettings(){ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore})"
+                    data-bs-toggle="modal"
                        data-bs-target="#infoModal">
                         View
                     </a>

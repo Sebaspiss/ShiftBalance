@@ -3,6 +3,7 @@
     public enum ShiftType
     {
         Opening = 0,
-        Closing = 1
+        Closing = 1,
+        Availability = 2
     }
 }

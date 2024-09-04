@@ -241,6 +241,10 @@ namespace ShiftBalance.MVC.Services
                             {
                                 SwapTurn(j, i, ShiftType.Closing);
                             }
+                            else if (_availability.Matrix[j,i] == 1)
+                            {
+                                SwapTurn(j,i, ShiftType.Availability);
+                            }
                         }
                     }
                 }
@@ -268,6 +272,11 @@ namespace ShiftBalance.MVC.Services
             {
                 _closings.Matrix[worker, day] = 0;
                 _closings.Matrix[swapWorker, day] = 1;
+            }
+            else if (shiftType == ShiftType.Availability)
+            {
+                _availability.Matrix[worker, day] = 0;
+                _availability.Matrix[swapWorker, day] = 1;
             }
         }
 
